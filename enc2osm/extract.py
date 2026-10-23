@@ -112,6 +112,8 @@ def read_features(path, mapping: Mapping, classes: list[str], duni, huni,
         if lyr is None:
             continue
         allowed = set(mapping.objects[cls]["geometry"])
+        defn = lyr.GetLayerDefn()
+        names = [defn.GetFieldDefn(i).GetName() for i in range(defn.GetFieldCount())]
         for f in lyr:
             g = f.GetGeometryRef()
             kind = GEOM_KIND.get(ogr.GT_Flatten(g.GetGeometryType())) if g is not None else None
@@ -120,10 +122,10 @@ def read_features(path, mapping: Mapping, classes: list[str], duni, huni,
                 stats[f"skipped_geometry:{cls}:{kind}"] += 1
                 continue
             raw = {}
-            for k, v in f.items().items():
-                if k in RECORD_FIELDS:
+            for i, k in enumerate(names):  # by index: Feature.items() looks up every name
+                if k in RECORD_FIELDS or not f.IsFieldSetAndNotNull(i):
                     continue
-                v = _clean(v)
+                v = _clean(f.GetField(i))
                 if v is not None:
                     raw[k] = v
             refs = list(zip(f.GetField("LNAM_REFS") or [], f.GetField("FFPT_RIND") or [],

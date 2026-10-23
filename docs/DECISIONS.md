@@ -105,3 +105,37 @@ several `M_NSYS` areas with different values, it stays unset (counted as `marsys
   dropped and counted (`conflict:*`).
 - `MARSYS` is emitted as `seamark:<type>:system` only for BOY*/BCN*; elsewhere ignored.
 - Provenance tags: `enc:cell`, `enc:band`, `enc:lnam` (master's), `enc:scamin`, `enc:sordat`.
+
+## D13 — Seam dedup algorithm (2026-10-23)
+The spec's "require a unique match" is implemented as a greedy, distance-ordered 1:1 matching:
+- Candidate pairs: different cells, ≤ tolerance, same `seamark:type`, same non-empty name or (both
+  unnamed) identical `colour` and `shape`; at least one point is a seam candidate.
+- A pair is **ambiguous** only if one of its points has another open candidate *from the
+  partner's cell* within distance + margin (margin = 20 % of the tolerance = 10 m). A cell
+  encodes a physical mark once, so two such candidates means the twin cannot be identified;
+  candidates from a third cell are not a contradiction (three overlapping bands).
+- Merged points are removed; the kept (higher-priority) point may still absorb twins from other
+  cells, but never a second one from the same cell.
+- **Pairs from cells whose coverages do not overlap** (they only touch, e.g. neighbouring band-5
+  grid cells) are only merged at ≤ 1 m: such cells chart a mark from the same compilation, so a
+  real twin sits at the same position, while a 40 m pair there is two marks. Found on the small
+  fixture: without this rule two different unnamed rocks 40 m apart in US5OAKFF/US5OAKEF were
+  merged and five ambiguous pairs appeared (9.4 % of seam candidates); with it: 0 ambiguous, all
+  merges at 0.0 m.
+- Why not the literal rule: with real ENCs a lower band usually charts *both* of two nearby marks,
+  so a higher-band mark near the seam has two lower-band candidates (its twin + the neighbour) and
+  the literal rule would call it ambiguous and keep the duplicate.
+- Known limitation: two different unnamed marks with identical colour/shape, ≤ tolerance apart
+  across a seam of *overlapping* cells, where each is charted by only one of the cells, are
+  indistinguishable from one mark with a position offset and get merged.
+
+## D14 — Dropped-object audit interpretation (2026-10-23)
+Counterpart = an output point with the same `seamark:type` within 2× tolerance, **or** with the
+same type and the same non-empty name within 1000 m (equirectangular). Classification helper:
+`scripts/classify_dropped.py` (position / type / edition / not_charted).
+
+## D15 — Lines/areas in v1 classes (2026-10-23)
+LNDMRK, MORFAC, WRECKS, OBSTRN also occur as lines/areas. They go through the line/area path
+(clip without buffer, re-join) already in `--classes v1`; only points get the seam buffer.
+Closed linear ways get `area=no` (Planetiler treats closed ways as polygons unless `area=no`,
+see OsmReader.canBePolygon in planetiler-core 0.10.2, the version the reference pipeline uses).
