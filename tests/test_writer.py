@@ -61,3 +61,14 @@ def test_negative_ids(tmp_path):
                  negative_ids=True)
     nodes, ways, _ = read(out)
     assert sorted(nodes) == [-3, -2, -1] and list(ways.values())[0][0] == [-2, -3]
+
+
+def test_vertex_spill_gives_identical_file(tmp_path):
+    pts = [PointObj("C", 0, "BOYLAT", "a", 1.0, 1.0, {"seamark:type": "buoy_lateral"})]
+    shapes = [M("line", "MULTILINESTRING((" + ",".join(f"{i * 1e-4} {(i % 7) * 1e-4}"
+                                                      for i in range(300)) + "))"),
+              M("area", "MULTIPOLYGON(((0 0,0.01 0,0.01 0.01,0 0)))")]
+    a, b = tmp_path / "a.osm.pbf", tmp_path / "b.osm.pbf"
+    writer.write(str(a), pts, shapes, "t", None)
+    st = writer.write(str(b), pts, shapes, "t", None, spill_at=10)
+    assert a.read_bytes() == b.read_bytes() and st["vertex_nodes"] == 302

@@ -113,6 +113,8 @@ def process_cell(cell: CellInfo, eff: Effective, mapping: Mapping, opts: Options
                 continue
             status = clipper.status(p.x, p.y)
             if status == "drop":
+                # the audit only needs type and name; keep the rest out of memory
+                obj.tags = {k: t[k] for k in ("seamark:type", "seamark:name") if k in t}
                 dropped.append(obj)
                 stats["points_clipped"] += 1
                 continue

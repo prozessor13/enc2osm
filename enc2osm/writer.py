@@ -17,22 +17,49 @@ QUANT = 10_000_000  # 1e-7 degree
 
 
 class VertexStore:
-    """Way vertices deduplicated by coordinates quantized to 1e-7 degree."""
+    """Way vertices deduplicated by coordinates quantized to 1e-7 degree.
 
-    def __init__(self, first_id: int):
-        self.next_id = first_id  # internal ids are positive and ascending; signed on output
+    In memory up to `spill_at` vertices, then moved to the sqlite temp store behind the same
+    interface (CLAUDE.md: on-disk store if memory becomes an issue). Ids are positive and
+    ascending in first-seen order; the writer applies the sign.
+    """
+
+    def __init__(self, first_id: int, store=None, spill_at: int = 3_000_000):
+        self.next_id = first_id
         self.ids: dict[tuple[int, int], int] = {}
         self.order: list[tuple[int, tuple[int, int]]] = []
+        self.store, self.spill_at, self.spilled = store, spill_at, False
 
     def get(self, x: float, y: float) -> int:
         k = (round(x * QUANT), round(y * QUANT))
-        nid = self.ids.get(k)
+        if self.spilled:
+            nid = self.store.vertex_get(k)
+        else:
+            nid = self.ids.get(k)
         if nid is None:
             nid = self.next_id
             self.next_id += 1
-            self.ids[k] = nid
-            self.order.append((nid, k))
+            if self.spilled:
+                self.store.vertex_put(k, nid)
+            else:
+                self.ids[k] = nid
+                self.order.append((nid, k))
+                if self.store is not None and len(self.order) >= self.spill_at:
+                    self._spill()
         return nid
+
+    def _spill(self) -> None:
+        self.store.vertex_bulk(self.order)
+        self.ids.clear()
+        self.order = []
+        self.spilled = True
+
+    def items(self):
+        """(id, (qx, qy)) in id order."""
+        if self.spilled:
+            yield from self.store.vertices()
+        else:
+            yield from self.order
 
 
 def _ring_ids(ring: ogr.Geometry, vs: VertexStore) -> list[int]:
@@ -53,8 +80,8 @@ def _chunks(ids: list[int]) -> list[list[int]]:
 class Plan:
     """First pass over lines/areas: assign vertex ids, spool ways/relations into the store."""
 
-    def __init__(self, n_points: int, shapes, store):
-        self.vs = VertexStore(n_points + 1)
+    def __init__(self, n_points: int, shapes, store, spill_at: int = 3_000_000):
+        self.vs = VertexStore(n_points + 1, store, spill_at)
         self.store = store
         self.n_ways = 0
         self.n_rels = 0
@@ -106,7 +133,7 @@ class Plan:
 
 def write(path: str, points: list[PointObj], shapes, attribution: str,
           bbox: tuple[float, float, float, float] | None, negative_ids: bool = False,
-          store=None) -> dict:
+          store=None, spill_at: int = 3_000_000) -> dict:
     """Write seamark nodes, then way vertices, ways and relations.
 
     `shapes`: iterable of (kind, cls, wkb, tags) in output order, or a list of Merged.
@@ -118,7 +145,7 @@ def write(path: str, points: list[PointObj], shapes, attribution: str,
     store = store or TempStore()
     sign = -1 if negative_ids else 1
     shapes = ((m.kind, m.cls, m.wkb, m.tags) if isinstance(m, Merged) else m for m in shapes)
-    plan = Plan(len(points), shapes, store)
+    plan = Plan(len(points), shapes, store, spill_at)
     if os.path.exists(path):
         os.remove(path)
     hdr = osmium.io.Header()
@@ -131,7 +158,9 @@ def write(path: str, points: list[PointObj], shapes, attribution: str,
     try:
         for i, p in enumerate(points, 1):
             w.add_node(mutable.Node(id=sign * i, location=(p.x, p.y), tags=p.tags))
-        for nid, (qx, qy) in plan.vs.order:
+        n_vertices = 0
+        for nid, (qx, qy) in plan.vs.items():
+            n_vertices += 1
             w.add_node(mutable.Node(id=sign * nid, location=(qx / QUANT, qy / QUANT), tags={}))
         for wid, ids, tags in store.ways():
             w.add_way(mutable.Way(id=sign * wid, nodes=[sign * n for n in ids], tags=tags))
@@ -142,5 +171,5 @@ def write(path: str, points: list[PointObj], shapes, attribution: str,
         w.close()
         if own:
             store.close()
-    return {"seamark_nodes": len(points), "vertex_nodes": len(plan.vs.order),
+    return {"seamark_nodes": len(points), "vertex_nodes": n_vertices,
             "ways": plan.n_ways, "relations": plan.n_rels}

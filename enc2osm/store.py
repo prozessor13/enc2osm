@@ -34,6 +34,7 @@ class TempStore:
             CREATE TABLE merged(sortkey TEXT, kind TEXT, cls TEXT, wkb BLOB, tags TEXT);
             CREATE TABLE ways(id INTEGER PRIMARY KEY, nodes BLOB, tags TEXT);
             CREATE TABLE rels(id INTEGER PRIMARY KEY, members TEXT, tags TEXT);
+            CREATE TABLE vertices(k INTEGER PRIMARY KEY, id INTEGER);
         """)
 
     # -- pass 2 output ---------------------------------------------------------------------------
@@ -91,6 +92,35 @@ class TempStore:
     def rels(self):
         for rid, members, tags in self.db.execute("SELECT id, members, tags FROM rels ORDER BY id"):
             yield rid, [tuple(m) for m in json.loads(members)], json.loads(tags)
+
+    # -- way vertices (only when VertexStore spills) -------------------------------------------
+    @staticmethod
+    def _vkey(k: tuple[int, int]) -> int:
+        return ((k[0] + (1 << 31)) << 32 | (k[1] + (1 << 31))) - (1 << 63)
+
+    @staticmethod
+    def _vunkey(v: int) -> tuple[int, int]:
+        u = v + (1 << 63)
+        return (u >> 32) - (1 << 31), (u & 0xFFFFFFFF) - (1 << 31)
+
+    def vertex_bulk(self, order) -> None:
+        self.db.executemany("INSERT INTO vertices VALUES (?,?)",
+                            [(self._vkey(k), nid) for nid, k in order])
+
+    def vertex_get(self, k):
+        row = self.db.execute("SELECT id FROM vertices WHERE k=?", (self._vkey(k),)).fetchone()
+        return row[0] if row else None
+
+    def vertex_put(self, k, nid) -> None:
+        self.db.execute("INSERT INTO vertices VALUES (?,?)", (self._vkey(k), nid))
+
+    def vertex_count(self) -> int:
+        return self.db.execute("SELECT COUNT(*) FROM vertices").fetchone()[0]
+
+    def vertices(self):
+        self.db.execute("CREATE INDEX IF NOT EXISTS vertices_id ON vertices(id)")
+        for k, nid in self.db.execute("SELECT k, id FROM vertices ORDER BY id"):
+            yield nid, self._vunkey(k)
 
     def close(self) -> None:
         self.db.close()
