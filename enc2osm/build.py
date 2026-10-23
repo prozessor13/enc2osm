@@ -150,8 +150,9 @@ def write_reports(d: Path, cell_stats, decisions, missing, effs, cells, summary)
         w = csv.writer(f)
         w.writerow(["cell", "band", "issue_date", "lnam", "class", "seamark_type", "name", "lon",
                     "lat", "covering_cell", "covering_band", "covering_issue_date"])
+        index = CoveringIndex(effs, by_name)
         for p, _ in missing:
-            cov = covering_cell(p, effs, by_name)
+            cov = index.find(p)
             c = by_name[p.cell]
             w.writerow([p.cell, c.band, c.issue_date, p.lnam, p.cls,
                         p.tags.get("seamark:type"), p.tags.get("seamark:name", ""),
@@ -168,14 +169,35 @@ def write_reports(d: Path, cell_stats, decisions, missing, effs, cells, summary)
     (d / "stats_per_cell.json").write_text(json.dumps(per_cell, indent=1, sort_keys=True) + "\n")
 
 
-def covering_cell(p: PointObj, effs, by_name):
-    from osgeo import ogr
-    pt = ogr.Geometry(ogr.wkbPoint)
-    pt.AddPoint_2D(p.x, p.y)
-    for name, e in sorted(effs.items(), key=lambda kv: kv[1].rank):
-        if name != p.cell and e.geom.Intersects(pt):
-            return by_name[name]
-    return None
+class CoveringIndex:
+    """Which other cell's effective area contains a point? Geometries parsed once, 0.5° grid."""
+
+    GRID = 0.5
+
+    def __init__(self, effs, by_name):
+        self.by_name = by_name
+        self.items = []  # (rank, name, geometry), highest priority first
+        self.grid: dict[tuple[int, int], list[int]] = {}
+        for name, e in sorted(effs.items(), key=lambda kv: kv[1].rank):
+            g = e.geom
+            if g.IsEmpty():
+                continue
+            i = len(self.items)
+            self.items.append((e.rank, name, g))
+            minx, maxx, miny, maxy = g.GetEnvelope()
+            for gx in range(int(minx // self.GRID), int(maxx // self.GRID) + 1):
+                for gy in range(int(miny // self.GRID), int(maxy // self.GRID) + 1):
+                    self.grid.setdefault((gx, gy), []).append(i)
+
+    def find(self, p: PointObj):
+        from osgeo import ogr
+        pt = ogr.Geometry(ogr.wkbPoint)
+        pt.AddPoint_2D(p.x, p.y)
+        for i in self.grid.get((int(p.x // self.GRID), int(p.y // self.GRID)), ()):
+            _rank, name, g = self.items[i]  # list is in rank order
+            if name != p.cell and g.Intersects(pt):
+                return self.by_name[name]
+        return None
 
 
 def run(args) -> int:
