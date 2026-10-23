@@ -20,6 +20,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="command", required=True)
 
+    p = sub.add_parser("inventory", help="list cells with band, edition, scale, coverage")
+    _add_inputs(p)
+    p.add_argument("--json", action="store_true")
+
     p = sub.add_parser("lnam-check", help="count LNAMs shared between cells")
     _add_inputs(p)
     p.add_argument("--json", action="store_true")
@@ -30,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(levelname)s %(name)s: %(message)s", stream=sys.stderr)
+    if args.command == "inventory":
+        from enc2osm.inventory import run
+        return run(args)
     if args.command == "lnam-check":
         from enc2osm.lnamcheck import run
         return run(args)

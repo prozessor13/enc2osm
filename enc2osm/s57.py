@@ -46,3 +46,6 @@ def open_cell(path: Path) -> ogr.DataSource:
     if ds is None:
         raise RuntimeError(f"cannot open {path}")
     return ds
+
+
+configure()
