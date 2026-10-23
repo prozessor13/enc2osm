@@ -15,6 +15,7 @@ Usage (inside the project image):
     python scripts/fetch_fixtures.py small
     python scripts/fetch_fixtures.py medium
     python scripts/fetch_fixtures.py --bbox -122.52,37.78,-122.38,37.84 --list
+    python3 scripts/fetch_fixtures.py --all --refresh-catalog   # every active cell, no GDAL needed
 """
 
 from __future__ import annotations
@@ -23,12 +24,11 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
-
-from osgeo import ogr
 
 CATALOG_URL = "https://charts.noaa.gov/ENCs/ENCProdCat.xml"
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,12 +45,19 @@ REGIONS = {
 S57_FILE = re.compile(r"^[A-Z0-9]{8}\.\d{3}$", re.IGNORECASE)
 
 
-def fetch(url: str, dest: Path) -> Path:
+def fetch(url: str, dest: Path, tries: int = 3) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with urllib.request.urlopen(url, timeout=120) as r, open(tmp, "wb") as f:
-        while chunk := r.read(1 << 20):
-            f.write(chunk)
+    for attempt in range(1, tries + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as r, open(tmp, "wb") as f:
+                while chunk := r.read(1 << 20):
+                    f.write(chunk)
+            break
+        except OSError:
+            if attempt == tries:
+                raise
+            time.sleep(5 * attempt)
     tmp.rename(dest)
     return dest
 
@@ -80,6 +87,8 @@ def load_catalog(refresh: bool) -> list[dict]:
 
 
 def panel_geom(panels: list) -> ogr.Geometry:
+    from osgeo import ogr  # only needed for bbox selection
+
     multi = ogr.Geometry(ogr.wkbMultiPolygon)
     for ring in panels:
         r = ogr.Geometry(ogr.wkbLinearRing)
@@ -93,6 +102,8 @@ def panel_geom(panels: list) -> ogr.Geometry:
 
 
 def select(cells: list[dict], bbox: tuple[float, float, float, float]) -> list[dict]:
+    from osgeo import ogr
+
     minx, miny, maxx, maxy = bbox
     box = ogr.CreateGeometryFromWkt(
         f"POLYGON(({minx} {miny},{maxx} {miny},{maxx} {maxy},{minx} {maxy},{minx} {miny}))")
@@ -121,22 +132,26 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("region", nargs="?", choices=sorted(REGIONS))
     ap.add_argument("--bbox", help="minx,miny,maxx,maxy (overrides region)")
+    ap.add_argument("--all", action="store_true", help="every active cell of the catalog")
     ap.add_argument("--out", help="output directory (default fixtures/<region>)")
     ap.add_argument("--list", action="store_true", help="only list the selected cells")
     ap.add_argument("--refresh-catalog", action="store_true")
     args = ap.parse_args()
 
-    if args.bbox:
+    if args.all:
+        bbox = None
+    elif args.bbox:
         bbox = tuple(float(v) for v in args.bbox.split(","))
     elif args.region:
         bbox = REGIONS[args.region]
     else:
-        ap.error("give a region or --bbox")
+        ap.error("give a region, --bbox or --all")
     default_out = ROOT / "tests" / "data" / "small" if args.region == "small" else \
-        ROOT / "fixtures" / (args.region or "custom")  # small is committed (< 20 MB)
+        ROOT / "fixtures" / ("all" if args.all else args.region or "custom")  # small: committed
     out = Path(args.out) if args.out else default_out
 
-    sel = select(load_catalog(args.refresh_catalog), bbox)
+    cells = load_catalog(args.refresh_catalog)
+    sel = sorted(cells, key=lambda c: c["name"]) if bbox is None else select(cells, bbox)
     total = sum(int(c["zipfile_size"] or 0) for c in sel)
     for c in sel:
         print(f"{c['name']}  band={c['name'][2]}  1:{c['cscale']:>8}  ed={c['edtn']}.{c['updn']}"
@@ -145,11 +160,19 @@ def main() -> int:
     if args.list:
         return 0
 
-    manifest = {"catalog": CATALOG_URL, "bbox": list(bbox), "cells": {}}
-    for c in sel:
+    manifest = {"catalog": CATALOG_URL, "bbox": list(bbox) if bbox else None, "cells": {},
+                "failed": {}}
+    for n, c in enumerate(sel, 1):
         zpath = CACHE / "zips" / f"{c['name']}_{c['edtn']}_{c['updn']}.zip"
         if not zpath.exists():
-            fetch(c["zipfile_location"], zpath)
+            try:
+                fetch(c["zipfile_location"], zpath)
+            except OSError as e:
+                manifest["failed"][c["name"]] = str(e)
+                print(f"FAILED {c['name']}: {e}", file=sys.stderr)
+                continue
+        if n % 250 == 0:
+            print(f"{n}/{len(sel)} cells", file=sys.stderr, flush=True)
         files = safe_extract(zpath, c["name"], out)
         manifest["cells"][c["name"]] = {"edtn": c["edtn"], "updn": c["updn"],
                                         "isdt": c["isdt"], "files": files}
