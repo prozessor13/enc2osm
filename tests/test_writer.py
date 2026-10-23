@@ -43,9 +43,21 @@ def test_writer_structures(tmp_path):
     tagged_ways = [w for w in ways.values() if w[1]]
     assert any(w[1].get("area") == "no" for w in tagged_ways)
     assert all(len(n) <= writer.MAX_WAY_NODES for n, _ in ways.values())
-    long_parts = sorted((n for n, t in ways.values() if len(n) > 100), key=lambda n: -n[0])
+    long_parts = sorted((n for n, t in ways.values() if len(n) > 100), key=lambda n: n[0])
     assert [len(n) for n in long_parts] == [2000, 2000, 502]  # 4500 nodes, shared end nodes
     assert long_parts[0][-1] == long_parts[1][0] and long_parts[1][-1] == long_parts[2][0]
     assert len(rels) == 1
     members, tags = next(iter(rels.values()))
     assert tags["type"] == "multipolygon" and {r for _, _, r in members} == {"outer", "inner"}
+    # Planetiler: node ids ascending and >= 1 in file order
+    ids = [o.id for o in osmium.FileProcessor(str(out), osmium.osm.NODE)]
+    assert ids == sorted(ids) and ids[0] == 1
+
+
+def test_negative_ids(tmp_path):
+    pts = [PointObj("C", 0, "BOYLAT", "a", 1.0, 1.0, {"seamark:type": "buoy_lateral"})]
+    out = tmp_path / "n.osm.pbf"
+    writer.write(str(out), pts, [M("line", "MULTILINESTRING((0 0,1 1))")], "t", None,
+                 negative_ids=True)
+    nodes, ways, _ = read(out)
+    assert sorted(nodes) == [-3, -2, -1] and list(ways.values())[0][0] == [-2, -3]

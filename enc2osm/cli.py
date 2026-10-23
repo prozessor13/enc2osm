@@ -32,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="keep unmapped S-57 attributes as enc:<ACRONYM>")
     p.add_argument("--report", metavar="DIR", help="write dedup/audit/stats reports here")
     p.add_argument("--workers", type=int, default=1, help="parallel cells in pass 2 (default 1)")
+    p.add_argument("--negative-ids", action="store_true",
+                   help="write negative object IDs (-1, -2, ...); default 1, 2, ... because "
+                        "Planetiler needs ascending non-negative node IDs")
 
     p = sub.add_parser("inventory", help="list cells with band, edition, scale, coverage")
     _add_inputs(p)

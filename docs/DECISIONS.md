@@ -139,3 +139,23 @@ LNDMRK, MORFAC, WRECKS, OBSTRN also occur as lines/areas. They go through the li
 (clip without buffer, re-join) already in `--classes v1`; only points get the seam buffer.
 Closed linear ways get `area=no` (Planetiler treats closed ways as polygons unless `area=no`,
 see OsmReader.canBePolygon in planetiler-core 0.10.2, the version the reference pipeline uses).
+
+## D16 — Object IDs: positive and ascending by default (2026-10-23) — deviates from CLAUDE.md
+CLAUDE.md asks for negative IDs. The reference consumer cannot read them: Planetiler 0.10.2 (the
+version openwatersio/seamap pins) stores node locations in `SparseArrayLongLongMap` /
+`SortedTableLongLongMap`, whose `put()` throws "Nodes must be sorted ascending by ID" unless every
+key is > the previous one, starting from -1 — so -1, -2, … fails on the second node, and pyosmium's
+default location index ignores negative IDs as well. Default is therefore 1, 2, 3, … per object
+type, assigned in the same deterministic order (seamark nodes sorted by cell, class, LNAM; then
+way vertices in way order). `--negative-ids` writes -1, -2, … exactly as specified, for consumers
+that need IDs that cannot collide with real OSM data. The file is never merged with OSM data or
+uploaded (CLAUDE.md), so positive IDs carry no collision risk in the intended pipeline.
+**Needs confirmation by the user.**
+
+## D17 — Criterion 4 check counts cross-cell pairs only (2026-10-23)
+The first version of the check flagged 6 pairs on the medium fixture; all 6 are two *different*
+S-57 objects of the *same* cell that share a name (e.g. two "Edmonds Fishing Reef Buoy" 40 m apart
+in US5SEAIL, two "Bangor South Floating Security Barrier Light" 86 m apart in US5SEAHG). They are
+not seam duplicates and removing one would lose a mark. The check now evaluates pairs from
+different cells (what seam dedup is responsible for) and lists same-cell pairs separately in
+`acceptance.json` / REPORT.md.

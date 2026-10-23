@@ -114,6 +114,7 @@ def aggregate(features: list[Feature], mapping: Mapping, stats: Counter) -> list
     grouped: dict[str, list[Feature]] = defaultdict(list)
     for s_lnam, m_lnam in owner.items():
         grouped[m_lnam].append(slaves[s_lnam])
+        stats[f"slave_on_structure:{slaves[s_lnam].cls}"] += 1
     out = [Aggregate(m, sorted(grouped.get(m.lnam, []), key=slave_sort_key))
            for m in masters]
     out += [Aggregate(f) for f in features if f.cls not in masters_cls | slaves_cls]

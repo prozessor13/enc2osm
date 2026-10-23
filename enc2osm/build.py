@@ -84,7 +84,8 @@ def peak_rss_mb() -> float:
     return max(own, kids) / 1024  # Linux: KiB
 
 
-def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 1) -> dict:
+def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 1,
+          negative_ids: bool = False) -> dict:
     t0 = time.time()
     cells, skipped = inventory.build(inputs)
     if opts.bbox:
@@ -109,7 +110,8 @@ def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 
     max_lat = max(max(abs(c.bbox[1]), abs(c.bbox[3])) for c in cells)
     merged, rejoin_stats = rejoin.rejoin(shapes, m_to_deg(tol, max_lat))
     kept.sort(key=lambda p: (p.cell, p.cls, p.lnam, p.x, p.y))
-    wstats = writer.write(output, kept, merged, attribution(cells), opts.bbox)
+    wstats = writer.write(output, kept, merged, attribution(cells), opts.bbox,
+                          negative_ids=negative_ids)
     t3 = time.time()
 
     seam = sum(p.seam for p in points)
@@ -177,6 +179,6 @@ def run(args) -> int:
     opts = Options(scope=args.classes, seam_tolerance=args.seam_tolerance,
                    keep_raw=args.keep_raw, bbox=bbox)
     workers = max(1, min(args.workers, os.cpu_count() or 1))
-    summary = build(args.inputs, args.output, opts, args.report, workers)
+    summary = build(args.inputs, args.output, opts, args.report, workers, args.negative_ids)
     print(json.dumps({k: v for k, v in summary.items() if k != "skipped_cells"}, indent=1))
     return 0
