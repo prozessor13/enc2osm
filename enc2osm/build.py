@@ -15,7 +15,6 @@ from pathlib import Path
 from osgeo import gdal
 
 from enc2osm import coverage, dedup, inventory, mapping, rejoin, store, writer
-from enc2osm.coverage import m_to_deg
 from enc2osm.pass2 import CellResult, Options, PointObj, bbox_geom, process_cell
 
 log = logging.getLogger(__name__)
@@ -110,9 +109,8 @@ def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 
     kept, decisions = dedup.dedup(points, tol, DEDUP_MARGIN_FRACTION * tol,
                                   overlaps=CoverageOverlap(cells, opts.sliver_m2))
     missing = dedup.audit(dropped, kept, tol)
-    max_lat = max(max(abs(c.bbox[1]), abs(c.bbox[3])) for c in cells)
     n_shapes = st.count_shapes()
-    rejoin_stats = rejoin.rejoin_store(st, m_to_deg(tol, max_lat))
+    rejoin_stats = rejoin.rejoin_store(st, tol)  # metres; converted per pair at its latitude
     n_merged = st.count_merged()
     kept.sort(key=lambda p: (p.cell, p.cls, p.lnam, p.x, p.y))
     wstats = writer.write(output, kept, st.merged(), attribution(cells), opts.bbox,

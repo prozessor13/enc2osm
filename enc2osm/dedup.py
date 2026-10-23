@@ -6,10 +6,11 @@ area may be the same physical mark as a point from a neighbouring cell. Candidat
 the same non-empty seamark:name or (both unnamed) identical colour and shape tags; at least one
 of the two is a seam candidate.
 
-Duplicates with a position offset only arise where coverages overlap (different bands, or
-same-band overlap). Between cells whose coverages merely touch, a mark charted in both sits at
-(practically) the same position, so such pairs are only considered up to `touch_eps` metres;
-a farther pair there is two different marks (merging it would lose one).
+Named marks (same type and same non-empty name) are matched up to 2x tol between any two cells:
+the full NOAA set has the same named buoy in neighbouring cells 50-100 m apart (asynchronous
+editions, often even the same LNAM). Unnamed marks are matched up to tol, and between cells whose
+coverages merely touch only up to `touch_eps` metres: there an unnamed 40 m pair is two marks
+(e.g. two rocks), and merging it would lose one.
 
 Pairs are decided greedily by distance. A pair is merged only if it is unambiguous: neither
 point has another open candidate *from the same cell as its partner* within `margin` metres of
@@ -102,15 +103,18 @@ def dedup(points: list[PointObj], tol: float, margin: float, overlaps=None,
     edges = []
     nbr: dict[int, list[tuple[float, int]]] = defaultdict(list)
     for i, p in enumerate(points):
-        for j in grid.near(p, tol):
+        for j in grid.near(p, 2 * tol):
             if j <= i:
                 continue
             q = points[j]
             if not (p.seam or q.seam) or not compatible(p, q):
                 continue
             d = dist_m(p, q)
-            if d > touch_eps and overlaps is not None and not overlaps(p.cell, q.cell):
-                continue
+            if not p.tags.get("seamark:name"):  # unnamed: tol, touching cells only ~identical
+                if d > tol:
+                    continue
+                if d > touch_eps and overlaps is not None and not overlaps(p.cell, q.cell):
+                    continue
             edges.append((d, i, j))
             nbr[i].append((d, j))
             nbr[j].append((d, i))

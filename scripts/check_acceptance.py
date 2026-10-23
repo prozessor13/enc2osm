@@ -79,10 +79,29 @@ def main():
         pt.AddPoint_2D(x, y)
         if buffered[c.name].IsEmpty() or not buffered[c.name].Intersects(pt):
             bad_pts.append(nid)
-    bad_shapes = []
+    bad_shapes, truncated = [], 0
+    all_eff = None
     for sid, g, t in shapes:
         u = ogr.Geometry(ogr.wkbMultiPolygon)
-        for name in t["enc:cell"].split(";"):
+        names = t["enc:cell"].split(";")
+        if "…" in names:
+            # list cut at the OSM 255-char limit: only "inside the union of all effective
+            # areas" can be checked (weaker), counted separately
+            truncated += 1
+            if all_eff is None:
+                all_eff = ogr.Geometry(ogr.wkbMultiPolygon)
+                for e in effs.values():
+                    for i in range(e.geom.GetGeometryCount()):
+                        all_eff.AddGeometry(e.geom.GetGeometryRef(i))
+                all_eff = all_eff.UnionCascaded().Buffer(EPS)
+            names = []
+            if not g.Within(all_eff):
+                outside = g.Difference(all_eff)
+                if not outside.IsEmpty() and (outside.GetArea() > 1e-12
+                                              or outside.Length() > 1e-6):
+                    bad_shapes.append(sid)
+            continue
+        for name in names:
             e = effs[name].geom
             for i in range(e.GetGeometryCount()):
                 u.AddGeometry(e.GetGeometryRef(i))
@@ -104,9 +123,15 @@ def main():
     slivers = sum(e.slivers_dropped for e in effs.values())
     c3 = {"points_checked": len(nodes), "points_outside": len(bad_pts),
           "shapes_checked": len(shapes), "shapes_outside": len(bad_shapes),
+          "shapes_with_truncated_cell_list": truncated,
           "union_symdiff_deg2": symdiff, "overlap_deg2": overlap, "slivers_dropped": slivers,
           "examples": {"points": bad_pts[:10], "shapes": bad_shapes[:10]}}
-    c3["pass"] = not bad_pts and not bad_shapes and symdiff < 1e-9 and abs(overlap) < 1e-9
+    # "within tolerance": dropped slivers (< sliver_m2 each, see coverage.resolve) may be missing
+    # from the effective union; bound them at the highest latitude (largest deg² per m²)
+    max_lat = max(max(abs(c.bbox[1]), abs(c.bbox[3])) for c in cells)
+    sliver_tol = slivers * coverage.m2_to_deg2(10.0, max_lat) + 1e-9
+    c3["union_tolerance_deg2"] = sliver_tol
+    c3["pass"] = not bad_pts and not bad_shapes and symdiff <= sliver_tol and abs(overlap) < 1e-9
     res["3_coverage"] = c3
 
     # --- 4 dedup invariant

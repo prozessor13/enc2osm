@@ -168,3 +168,22 @@ OFSPLF and BRIDGE are masters (lights/daymarks on platforms and bridges attach t
 points). Not mapped: DWRTPT (no wiki type), HORCLR/RADIUS/BURDEP (unit unclear), supplement codes
 (OPEN_QUESTIONS Q1). Areas are written as closed ways or multipolygon relations, lines as ways
 (`area=no` when closed). 17 hand-derived v2 golden cases.
+
+## D19 — Findings from the first full NOAA build (2026-10-23)
+- **Tag values > 255 characters** (OSM limit) crashed the writer: `enc:lnam`/`enc:cell` lists of
+  features re-joined from many cells and long `information` texts. Lists keep as many entries as
+  fit + `;…` and get `<key>_count`; free text is cut with `…`; counted as `tag_shortened:*`.
+- **Re-join tolerance was converted to degrees once, at the highest latitude of all cells** (72° N)
+  → ~140 m instead of 50 m in Texas; a pipeline was joined across a third cell's corner. Now the
+  tolerance stays in metres and is converted per pair at its own latitude (`rejoin.py`).
+- **D13 amended — named marks:** the full set has the same named mark in two *touching* same-band
+  cells 48–99 m apart (e.g. "Whittaker Creek Buoy 3", US5NC2CF/US5NC2DF, same LNAM, 75 m —
+  asynchronous editions), and a band-4/5 pair 65 m apart. Same type + same non-empty name is now
+  matched up to 2× tolerance between any cells (exactly criterion 4's duplicate definition);
+  unnamed marks keep the stricter rule (≤ tolerance, touching cells ≤ 1 m).
+- **Criterion 3 check:** the union-equality threshold was a fixed 1e-9 deg²; with 8 slivers
+  dropped nationally the difference was 1.08e-9 deg² (≈ 13 m²). The threshold is now the bound of
+  the dropped slivers (count × 10 m² at the highest latitude), i.e. what "within tolerance" means.
+  Features whose `enc:cell` list was shortened are checked against the union of all effective
+  areas (weaker) and counted separately.
+- Report: covering-cell lookup was O(dropped × cells) (~4 min), now grid-indexed.

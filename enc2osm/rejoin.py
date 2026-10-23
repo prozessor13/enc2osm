@@ -1,17 +1,20 @@
 """Phase 6 (lines/areas): re-join pieces that were cut apart at coverage seams.
 
 Pieces from *different* cells with identical tags (ignoring enc:* provenance) that touch within
-the seam tolerance are merged: areas by union, lines by joining at matching endpoints. The merged
-feature lists all source cells in enc:cell (sorted, ';'-separated).
+the seam tolerance (metres, converted per pair at its latitude) are merged: areas by union, lines
+by joining at matching endpoints. The merged feature lists all source cells in enc:cell (sorted,
+';'-separated).
 """
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 from osgeo import ogr
 
+from enc2osm.coverage import M_PER_DEG, m_to_deg
 from enc2osm.inventory import polygons_only, valid
 from enc2osm.pass2 import ShapeObj, lines_only
 
@@ -69,11 +72,18 @@ def _endpoints(line: ogr.Geometry):
 
 
 def _d(a, b) -> float:
-    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+    """Equirectangular distance in metres between two lon/lat points."""
+    k = math.cos(math.radians((a[1] + b[1]) / 2))
+    return math.hypot((a[0] - b[0]) * k * M_PER_DEG, (a[1] - b[1]) * M_PER_DEG)
 
 
-def join_lines(parts: list[tuple[str, ogr.Geometry]], tol_deg: float) -> list[ogr.Geometry]:
-    """Greedily join LineStrings from different cells whose endpoints lie within tol_deg."""
+def _tol_deg(tol_m: float, *envs) -> float:
+    """Tolerance in degrees at the highest |lat| of the envelopes (conservative)."""
+    return m_to_deg(tol_m, max(max(abs(e[2]), abs(e[3])) for e in envs))
+
+
+def join_lines(parts: list[tuple[str, ogr.Geometry]], tol_m: float) -> list[ogr.Geometry]:
+    """Greedily join LineStrings from different cells whose endpoints lie within tol_m metres."""
     chains = [([cell], [line.GetPoint_2D(i) for i in range(line.GetPointCount())])
               for cell, line in parts]
     changed = True
@@ -88,7 +98,7 @@ def join_lines(parts: list[tuple[str, ogr.Geometry]], tol_deg: float) -> list[og
                 a, b = ci[1], cj[1]
                 for how, d in (("ee", _d(a[-1], b[0])), ("er", _d(a[-1], b[-1])),
                                ("se", _d(a[0], b[-1])), ("sr", _d(a[0], b[0]))):
-                    if d <= tol_deg and (best is None or d < best[0]):
+                    if d <= tol_m and (best is None or d < best[0]):
                         best = (d, i, j, how)
         if best:
             _, i, j, how = best
@@ -118,8 +128,9 @@ GRID_DEG = 0.05      # bucket size for the candidate search
 MAX_BUCKETS = 4096   # envelopes spanning more buckets are compared against everything
 
 
-def _candidate_pairs(items: list[ShapeObj], envs: list, tol_deg: float):
+def _candidate_pairs(items: list[ShapeObj], envs: list, tol_m: float):
     """Pairs (i, j), i < j, from different cells whose envelopes (grown by tol) overlap."""
+    tol_deg = _tol_deg(tol_m, *envs)  # largest in the group: search radius only
     cell = max(GRID_DEG, tol_deg * 4)
     buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
     big: list[int] = []
@@ -145,21 +156,21 @@ def _candidate_pairs(items: list[ShapeObj], envs: list, tol_deg: float):
         if items[i].cell == items[j].cell:
             continue
         ei, ej = envs[i], envs[j]
-        if (ei[0] - tol_deg > ej[1] or ej[0] - tol_deg > ei[1]
-                or ei[2] - tol_deg > ej[3] or ej[2] - tol_deg > ei[3]):
+        t = _tol_deg(tol_m, ei, ej)
+        if (ei[0] - t > ej[1] or ej[0] - t > ei[1] or ei[2] - t > ej[3] or ej[2] - t > ei[3]):
             continue
-        yield i, j
+        yield i, j, t
 
 
-def rejoin_group(kind: str, items: list[ShapeObj], tol_deg: float, stats) -> list[Merged]:
+def rejoin_group(kind: str, items: list[ShapeObj], tol_m: float, stats) -> list[Merged]:
     """Re-join one group of shapes with identical (kind, tags-without-enc)."""
     items = sorted(items, key=lambda s: (s.cell, s.cls, s.lnam, s.wkb))
     norm = polygons_only if kind == "area" else lines_only
     geoms = [norm(ogr.CreateGeometryFromWkb(s.wkb)) for s in items]
     envs = [g.GetEnvelope() for g in geoms]
     uf = _UF(len(items))
-    for i, j in _candidate_pairs(items, envs, tol_deg):
-        if uf.find(i) != uf.find(j) and geoms[i].Distance(geoms[j]) <= tol_deg:
+    for i, j, t in _candidate_pairs(items, envs, tol_m):
+        if uf.find(i) != uf.find(j) and geoms[i].Distance(geoms[j]) <= t:
             uf.union(i, j)
     comps: dict[int, list[int]] = defaultdict(list)
     for i in range(len(items)):
@@ -188,14 +199,14 @@ def rejoin_group(kind: str, items: list[ShapeObj], tol_deg: float, stats) -> lis
                 for k in range(ml.GetGeometryCount()):
                     parts.append((items[i].cell, ml.GetGeometryRef(k).Clone()))
             ml = ogr.Geometry(ogr.wkbMultiLineString)
-            for ls in join_lines(parts, tol_deg):
+            for ls in join_lines(parts, tol_m):
                 ml.AddGeometry(ls)
             out.append(Merged(kind, srcs[0].cls, bytes(ml.ExportToWkb()),
                               _provenance(srcs, srcs[0].tags), srcs))
     return out
 
 
-def rejoin(shapes: list[ShapeObj], tol_deg: float) -> tuple[list[Merged], dict]:
+def rejoin(shapes: list[ShapeObj], tol_m: float) -> tuple[list[Merged], dict]:
     """In-memory convenience wrapper (tests): group, re-join, sort."""
     stats = defaultdict(int)
     groups: dict[tuple, list[ShapeObj]] = defaultdict(list)
@@ -203,15 +214,15 @@ def rejoin(shapes: list[ShapeObj], tol_deg: float) -> tuple[list[Merged], dict]:
         groups[(s.kind, identity(s.tags))].append(s)
     out: list[Merged] = []
     for (kind, _ident), items in sorted(groups.items(), key=lambda kv: kv[0]):
-        out.extend(rejoin_group(kind, items, tol_deg, stats))
+        out.extend(rejoin_group(kind, items, tol_m, stats))
     out.sort(key=lambda m: m.sort_key)
     return out, dict(stats)
 
 
-def rejoin_store(store, tol_deg: float) -> dict:
+def rejoin_store(store, tol_m: float) -> dict:
     """Streaming variant: read groups from the temp store, write merged shapes back to it."""
     stats = defaultdict(int)
     for kind, items in store.groups():
-        for m in rejoin_group(kind, items, tol_deg, stats):
+        for m in rejoin_group(kind, items, tol_m, stats):
             store.add_merged(m.sort_key, m.kind, m.cls, m.wkb, m.tags)
     return dict(stats)

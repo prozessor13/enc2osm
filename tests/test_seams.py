@@ -119,7 +119,7 @@ def _shape(cell_name, wkt, kind="area", **extra):
 def test_area_split_by_boundary_is_rejoined():
     a = _shape("LO", box(0.0, 0.0, BX, 0.005))
     b = _shape("HI", box(BX, 0.0, 0.015, 0.005))
-    merged, st = rejoin([a, b], coverage.m_to_deg(TOL, 0.02))
+    merged, st = rejoin([a, b], TOL)
     assert len(merged) == 1 and st["rejoined_area_features"] == 1
     assert abs(ogr.CreateGeometryFromWkb(merged[0].wkb).GetArea() - 0.015 * 0.005) < 1e-12
     assert merged[0].tags["enc:cell"] == "HI;LO"
@@ -129,14 +129,41 @@ def test_area_rejoin_requires_identical_tags_and_different_cells():
     a = _shape("LO", box(0.0, 0.0, BX, 0.005))
     b = _shape("HI", box(BX, 0.0, 0.015, 0.005), **{"seamark:name": "X"})
     c = _shape("LO", box(BX, 0.006, 0.015, 0.01))
-    merged, _ = rejoin([a, b, c], coverage.m_to_deg(TOL, 0.02))
+    merged, _ = rejoin([a, b, c], TOL)
     assert len(merged) == 3
 
 
 def test_line_split_by_boundary_is_rejoined():
     a = _shape("LO", f"LINESTRING(0 0.005, {BX} 0.005)", "line")
     b = _shape("HI", f"LINESTRING({BX + 1e-6} 0.005, 0.02 0.006)", "line")
-    merged, st = rejoin([a, b], coverage.m_to_deg(TOL, 0.02))
+    merged, st = rejoin([a, b], TOL)
     assert len(merged) == 1
     g = ogr.CreateGeometryFromWkb(merged[0].wkb)
     assert g.GetGeometryCount() == 1 and g.GetGeometryRef(0).GetPointCount() == 4
+
+
+def test_rejoin_tolerance_is_metric_at_each_latitude():
+    # two area pieces 100 m apart at 29 N must not join with a 50 m tolerance, even when the
+    # group also contains features far north (bug: one global conversion at the max latitude)
+    gap = 100 / (111_320 * 0.875)  # ~100 m in longitude at 29 N
+    a = _shape("LO", box(0.0, 29.0, 0.01, 29.01))
+    b = _shape("HI", box(0.01 + gap, 29.0, 0.02, 29.01))
+    far = _shape("AK", box(0.0, 72.0, 0.01, 72.01))
+    merged, _ = rejoin([a, b, far], TOL)
+    assert len(merged) == 3
+
+
+def test_named_mark_in_touching_cells_up_to_twice_tolerance():
+    # same named buoy charted 75 m apart in two neighbouring same-band cells (async editions)
+    cells = [cell("W", 5, box(0, 0, BX, 0.02)), cell("E", 5, box(BX, 0, 0.02, 0.02))]
+    ov = CoverageOverlap(cells, 10.0)
+    named = dict(BUOY, **{"seamark:name": "Whittaker Creek Buoy 3"})
+    pts = [PointObj("W", 1, "BOYLAT", "w", BX - 35 * DEG_PER_M, 0.01, dict(named), True),
+           PointObj("E", 0, "BOYLAT", "e", BX + 40 * DEG_PER_M, 0.01, dict(named), True)]
+    kept, dec = dedup.dedup(pts, TOL, 10, overlaps=ov)
+    assert [(p.cell, p.lnam) for p in kept] == [("E", "e")] and dec[0].action == "merged"
+    # beyond 2x tolerance: kept apart
+    far = [PointObj("W", 1, "BOYLAT", "w", BX - 45 * DEG_PER_M, 0.01, dict(named), True),
+           PointObj("E", 0, "BOYLAT", "e", BX + 60 * DEG_PER_M, 0.01, dict(named), True)]
+    kept, _ = dedup.dedup(far, TOL, 10, overlaps=ov)
+    assert len(kept) == 2
