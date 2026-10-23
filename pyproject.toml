@@ -20,10 +20,10 @@ dev = ["pytest", "ruff"]
 enc2osm = "enc2osm.cli:main"
 
 [tool.setuptools]
-packages = ["enc2osm"]
+packages = ["enc2osm", "enc2osm.mapping"]
 
 [tool.setuptools.package-data]
-enc2osm = ["mapping/*.yaml"]
+"enc2osm.mapping" = ["*.yaml"]
 
 [tool.ruff]
 line-length = 100
