@@ -31,7 +31,7 @@ The output PBF is rendered **on its own** as a separate tile source. Merging wit
 Work through **all phases without asking for input**. Present only the finished result (see "Final deliverable"). The user will not answer questions mid-run.
 
 - Track progress in `docs/PROGRESS.md` (phase, status, what was verified). Re-read it after any context loss.
-- One commit series per phase on a local branch `dev`. Do not start a phase before the previous one passes its tests. Do **not** push to any remote.
+- One commit series per phase on branch `main`. Do not start a phase before the previous one passes its tests. Remote: `origin` = https://github.com/prozessor13/enc2osm (private project of the user). Push to `origin` only when the user asks.
 - Decide, don't ask: when something is ambiguous, pick the most conservative option, implement it, and record the decision with its reasoning in `docs/DECISIONS.md`.
 - Don't guess S-57 semantics. If an enumeration value or tag mapping is unclear, leave it unmapped, count it in the stats report, and add it to `docs/OPEN_QUESTIONS.md`. An unmapped value is acceptable; a wrong one is not.
 - Never weaken a test or acceptance check to make it pass. If a check turns out to be wrong, fix the check and document why in `docs/DECISIONS.md`.
@@ -260,7 +260,7 @@ When all acceptance criteria hold (or a stop condition is reached), present:
 - `docs/REPORT.md`: what was built, how to run it, results of every acceptance criterion with numbers, the OSM plausibility metrics, performance figures, the LNAM-check result, known limitations.
 - `docs/DECISIONS.md` and `docs/OPEN_QUESTIONS.md`, complete.
 - `README.md` with install (pip and Docker) and usage examples.
-- Git tag `v0.1.0` on the local `dev` branch.
+- Git tag `v0.1.0` on `main`.
 
 A visual check against the NOAA chart viewer and a render through the SeaMap tile pipeline will be done by the user afterwards; prepare `scripts/preview.sh` that builds the small fixture so this is a one-liner.
 
