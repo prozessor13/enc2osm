@@ -86,7 +86,7 @@ def load_catalog(refresh: bool) -> list[dict]:
     return cells
 
 
-def panel_geom(panels: list) -> ogr.Geometry:
+def panel_geom(panels: list):
     from osgeo import ogr  # only needed for bbox selection
 
     multi = ogr.Geometry(ogr.wkbMultiPolygon)

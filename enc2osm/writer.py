@@ -13,6 +13,35 @@ from enc2osm.pass2 import PointObj
 from enc2osm.rejoin import Merged
 
 MAX_WAY_NODES = 2000
+MAX_VALUE = 255  # OSM limit for tag values (characters)
+
+
+def fit_tags(tags: dict, stats: dict) -> dict:
+    """Keep every tag value within the OSM limit of 255 characters.
+
+    `;`-lists of provenance (enc:cell, enc:lnam, ...) of features re-joined from many cells keep
+    as many entries as fit plus ';…' and get `<key>_count`; free text is cut with '…'.
+    Every shortened value is counted in the stats (key `tag_shortened:<key>`).
+    """
+    if all(len(v) <= MAX_VALUE for v in tags.values()):
+        return tags
+    out = dict(tags)
+    for k, v in tags.items():
+        if len(v) <= MAX_VALUE:
+            continue
+        stats[f"tag_shortened:{k}"] = stats.get(f"tag_shortened:{k}", 0) + 1
+        if k.startswith("enc:") and ";" in v:
+            items = v.split(";")
+            kept = []
+            for it in items:
+                if len(";".join(kept + [it])) + 2 > MAX_VALUE:
+                    break
+                kept.append(it)
+            out[k] = ";".join(kept) + ";…"
+            out[f"{k}_count"] = str(len(items))
+        else:
+            out[k] = v[:MAX_VALUE - 1] + "…"
+    return out
 QUANT = 10_000_000  # 1e-7 degree
 
 
@@ -154,22 +183,27 @@ def write(path: str, points: list[PointObj], shapes, attribution: str,
     if bbox:
         hdr.add_box(osmium.osm.Box(osmium.osm.Location(bbox[0], bbox[1]),
                                    osmium.osm.Location(bbox[2], bbox[3])))
+    shortened: dict[str, int] = {}
     w = osmium.SimpleWriter(path, header=hdr)
     try:
         for i, p in enumerate(points, 1):
-            w.add_node(mutable.Node(id=sign * i, location=(p.x, p.y), tags=p.tags))
+            w.add_node(mutable.Node(id=sign * i, location=(p.x, p.y),
+                                    tags=fit_tags(p.tags, shortened)))
         n_vertices = 0
         for nid, (qx, qy) in plan.vs.items():
             n_vertices += 1
             w.add_node(mutable.Node(id=sign * nid, location=(qx / QUANT, qy / QUANT), tags={}))
         for wid, ids, tags in store.ways():
-            w.add_way(mutable.Way(id=sign * wid, nodes=[sign * n for n in ids], tags=tags))
+            w.add_way(mutable.Way(id=sign * wid, nodes=[sign * n for n in ids],
+                                  tags=fit_tags(tags, shortened)))
         for rid, members, tags in store.rels():
             w.add_relation(mutable.Relation(
-                id=sign * rid, members=[(t, sign * r, role) for t, r, role in members], tags=tags))
+                id=sign * rid, members=[(t, sign * r, role) for t, r, role in members],
+                tags=fit_tags(tags, shortened)))
     finally:
         w.close()
         if own:
             store.close()
-    return {"seamark_nodes": len(points), "vertex_nodes": n_vertices,
+    return {**dict(sorted(shortened.items())),
+            "seamark_nodes": len(points), "vertex_nodes": n_vertices,
             "ways": plan.n_ways, "relations": plan.n_rels}

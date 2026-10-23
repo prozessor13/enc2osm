@@ -72,3 +72,21 @@ def test_vertex_spill_gives_identical_file(tmp_path):
     writer.write(str(a), pts, shapes, "t", None)
     st = writer.write(str(b), pts, shapes, "t", None, spill_at=10)
     assert a.read_bytes() == b.read_bytes() and st["vertex_nodes"] == 302
+
+
+def test_tag_values_fit_osm_limit(tmp_path):
+    cells = ";".join(f"US5TEST{i:02d}" for i in range(60))  # 539 chars
+    long_text = "x" * 300
+    info_key = "seamark:buoy_lateral:information"
+    pts = [PointObj("C", 0, "BOYLAT", "a", 1.0, 1.0,
+                    {"seamark:type": "buoy_lateral", info_key: long_text})]
+    out = tmp_path / "t.osm.pbf"
+    line = M("line", "MULTILINESTRING((0 0,1 1))", **{"enc:cell": cells})
+    st = writer.write(str(out), pts, [line], "t", None)
+    nodes, ways, _ = read(out)
+    info = next(t for *_, t in nodes.values() if t)[info_key]
+    assert len(info) == 255 and info.endswith("…")
+    wt = next(t for _, t in ways.values())
+    assert len(wt["enc:cell"]) <= 255 and wt["enc:cell"].endswith(";…")
+    assert wt["enc:cell_count"] == "60"
+    assert st["tag_shortened:enc:cell"] == 1 and st[f"tag_shortened:{info_key}"] == 1
