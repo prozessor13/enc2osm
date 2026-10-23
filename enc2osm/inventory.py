@@ -27,6 +27,7 @@ class CellInfo:
     huni: int | None
     coverage_wkb: bytes = field(repr=False)
     bbox: tuple[float, float, float, float]  # minx, miny, maxx, maxy
+    agency: int | None = None  # DSID_AGEN (producing agency, S-62 code)
 
     @property
     def coverage(self) -> ogr.Geometry:
@@ -121,6 +122,7 @@ def read_cell(path: Path) -> CellInfo:
         issue_date=f.GetField("DSID_ISDT") or "", cscale=cscale,
         duni=f.GetField("DSPM_DUNI"), huni=f.GetField("DSPM_HUNI"),
         coverage_wkb=bytes(cov.ExportToWkb()), bbox=(minx, miny, maxx, maxy),
+        agency=f.GetField("DSID_AGEN"),
     )
 
 
