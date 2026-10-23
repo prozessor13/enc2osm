@@ -41,3 +41,9 @@ Coverage geometries are made valid (`MakeValid`) and reduced to their polygonal 
 ## D6 — Duplicate cell names (2026-10-23)
 Highest `DSID_EDTN`, then highest `DSID_UPDN` (after applying updates), then path (determinism).
 The loser is listed as skipped with reason "duplicate".
+
+## D7 — Resolver details (2026-10-23)
+- Issue date compares `DSID_ISDT` (YYYYMMDD, the issue date of the latest applied update).
+- Sliver threshold default 10 m² per polygon part (area converted at the part's mid latitude).
+  Rescheme cells share exact grid edges, so on the fixtures no slivers occur at all.
+- Mask grid 0.5°. Mask parts are the *full* coverages (not the effective areas), as specified.
