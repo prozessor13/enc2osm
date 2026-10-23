@@ -1,5 +1,8 @@
 # enc2osm — Report (v0.1.0, 2026-10-23)
 
+Sections 1–9 describe v0.1.0 (test regions). Section 10 adds the first full NOAA build and the
+fixes it led to (after the tag, on `main`).
+
 ## 1. What was built
 
 `enc2osm` merges IHO S-57 ENC cells into one deduplicated OSM file with OpenSeaMap `seamark:*`
@@ -244,3 +247,69 @@ Light B" (US5SEAFL, 39 m), "Bangor South Floating Security Barrier Light" (US5SE
 - Not done in this run: a full NOAA build, a render through the SeaMap pipeline (Planetiler was
   checked at source level only; `scripts/preview.sh` prepares it), visual check against the NOAA
   chart viewer.
+
+## 10. Full NOAA build (after v0.1.0)
+
+All 7,114 active NOAA cells (catalog of 2026-10-23, 0.79 GB zipped, 1.9 GB unpacked; downloaded with
+`scripts/fetch_fixtures.py --all`), `--classes v2 --workers 4`, Docker image on the MacBook Air.
+The cells were streamed into a Docker volume: two earlier attempts through the bind-mounted project
+directory made Docker Desktop's file-sharing service fail ("service fs failed: injecting event
+blocked for 60s"); that is a Docker Desktop problem, not one of enc2osm.
+
+**Time and memory** (memory from cgroup v2 inside the container):
+
+| | estimate (§4) | measured |
+|---|---|---|
+| wall time | 2–4 min | **3:18 min** — pass 1 23 s, pass 2 60 s, finalize 115 s |
+| process memory (anon, peak) | 1.5–2 GB | **2.0 GB** (+ 0.75 GB file cache) — within 4 GB |
+
+The single-threaded finalize step is the bottleneck, as predicted.
+
+**Output:** `noaa_v2.osm.pbf`, 33 MB — 379,856 seamark nodes, 6.3 M way vertices, 117,862 ways,
+4,703 relations, from 750,836 features read.
+
+| Metric | Value |
+|---|---|
+| points kept before / after dedup | 380,235 / 379,856 |
+| seam candidates / merges / ambiguous | 8,805 / 379 / 6 (0.07 %) |
+| points dropped by clipping / without counterpart | 145,549 / 18,093 |
+| lines/areas before / after re-join | 100,214 / 80,766 (16,944 area pieces → 4,001, 9,980 line pieces → 3,475) |
+| tag values shortened to 255 chars | 252 (155 `enc:lnam`, 34 `enc:cell`, 55 `restricted_area:information`, …) |
+
+**Acceptance checks on the full output** — all PASS:
+`osmium check-refs` clean; criterion 3: 379,856 points and 81,236 lines/areas inside their
+effective areas (34 with a shortened `enc:cell` list checked against the union of all effective
+areas), union difference 1.1e-9 deg² ≤ dropped-sliver bound 4.5e-8 deg², overlap −7.7e-10 deg²
+(float noise); criterion 4: 0 cross-cell violations, 6 ambiguous of 8,805 (0.07 %), 395
+same-name pairs inside single cells; criterion 5: e.g. LIGHTS 46,628 = 46,077 on a structure +
+551 standalone, 0 orphaned; criterion 9: no unknown types or values.
+
+**Bugs found by the full build and fixed** (DECISIONS D19, tests added):
+
+1. Tag values over the OSM limit of 255 characters crashed the writer (provenance lists of
+   features re-joined from many cells, long `information` texts).
+2. The re-join tolerance was converted to degrees once at the highest latitude of *all* cells
+   (72° N) → ~140 m instead of 50 m in Texas; a pipeline was joined across a third cell's corner.
+   Now converted per pair at its own latitude.
+3. The same named mark occurs in two *touching* same-band cells 48–99 m apart (asynchronous
+   editions, sometimes the same LNAM, e.g. "Whittaker Creek Buoy 3" in US5NC2CF/US5NC2DF). Named
+   marks of the same type are now matched up to 2× tolerance between any cells; unnamed marks keep
+   the stricter rule.
+4. Report generation looked up the covering cell for each dropped object over all cells
+   (~4 min); now grid-indexed.
+5. The criterion-3 check used a fixed 1e-9 deg² threshold, stricter than the documented sliver
+   tolerance; it now uses the bound of the slivers actually dropped.
+
+**Still open:**
+
+- The 18,093 dropped objects without counterpart are **not yet classified** for the full set.
+  By type: rock 12,352, obstruction 2,217, wreck 1,902, pile 838, landmark 446, mooring 141,
+  platform 113, anchorage 19 — and, unlike on the fixtures, **58 aids to navigation**
+  (38 `beacon_special_purpose`, 13 `buoy_special_purpose`, 4 `daymark`, 3 `light_minor`).
+  Most frequent band pairs: 3 under 4 (8,610), 4 under 5 (3,414), 2 under 4 (2,360), 3 under 5
+  (2,170). The aids to navigation should be examined first (`report/dropped_without_counterpart.csv`).
+- Further S-57 supplement codes appear nationally (OPEN_QUESTIONS Q1): RESTRN 16–27, CATREA 27/28,
+  CATSPM 53–56, CATACH=10, CATOBS=10, CATLMK=21, WATLEV=7.
+- The output bbox spans −180…180°: antimeridian cells (Aleutians, Guam/CNMI) are still out of
+  scope and should be checked or excluded before rendering.
+

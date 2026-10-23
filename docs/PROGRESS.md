@@ -14,4 +14,6 @@
 | 8 CLI, stats, packaging | done | e2e CLI tests, wheel/Docker entry point verified, README, preview.sh |
 | Acceptance | done | criteria 1–10, see REPORT.md (medium v1 + v2, small v2) |
 
-Final state: 102 tests green in the image; tag `v0.1.0` on `dev`. Nothing pushed.
+Final state of v0.1.0: 102 tests green in the image; tag `v0.1.0`.
+
+| Full NOAA build | done | 7,114 cells in 3:18 min, 2.0 GB; checks 3/4/5/9 PASS after 5 fixes (D19); 105 tests; dropped objects not yet classified (REPORT §10) |
