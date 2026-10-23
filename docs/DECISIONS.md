@@ -64,3 +64,17 @@ Kinds `depth`/`height` are declared per attribute in `attributes.yaml`.
 `system: true` in `objects.yaml` (BOY*, BCN*), matching the wiki ("Buoys, Beacons & Notices").
 Inheritance from `M_NSYS` only for point objects without own `MARSYS`; if the point lies in
 several `M_NSYS` areas with different values, it stays unset (counted as `marsys_conflict`).
+
+## D11 — Aggregation rules (2026-10-23)
+- Links: `LNAM_REFS` with `FFPT_RIND=2` on the master and `FFPT_RIND=1` on the slave are both
+  honoured. A slave claimed by two masters stays with the first (sorted by class, LNAM), counted.
+- Position fallback attaches an unreferenced slave only if **exactly one** point master sits at the
+  identical position (1e-7°). Two structures at the same spot → no guess, slave stays standalone.
+- Slaves of a non-point master (e.g. a lit landmark polygon) cannot share a single position with
+  it → standalone at their own position (counted `slave_of_nonpoint_master`).
+- Slaves whose master class is out of scope (e.g. BUISGL, BRIDGE in v1) are not resolved → standalone.
+- Standalone slaves at the same position form **one** object (a multi-sector light is encoded as
+  several LIGHTS at one point; one node per sector would break the style's sector rendering).
+  Its type comes from the first class in LIGHTS > FOGSIG > RTPBCN > DAYMAR > TOPMAR.
+- Light order on a structure: unsectored lights first, then SECTR1 ascending, then colour codes,
+  then LNAM (determinism). Numbering itself happens in the tag mapping.
