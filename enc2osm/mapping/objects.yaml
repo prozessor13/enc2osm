@@ -1,0 +1,56 @@
+# S-57 object class -> OSM seamark object.
+#
+#   type:      seamark:type value (OSM wiki Seamarks/Seamark_Objects; types read by
+#              openwatersio/seamap take precedence).
+#   role:      master  - structure that carries slaves (lights, topmarks, ...) and becomes a node
+#              slave   - aggregated onto its master as seamark:<key>:*  (key = `slave_key`)
+#              feature - plain point/line/area object, no aggregation
+#   geometry:  geometries accepted from S-57 (point, line, area); others are counted and skipped.
+#   scope:     v1 (points: seamarks + hazards) or v2 (areas + lines).
+#   system:    true -> emit seamark:<type>:system from MARSYS (own or inherited from M_NSYS).
+#   standalone (slaves only): seamark:type for a slave without any structure.
+#              `light` is a rule, see `light_rule` below.
+
+BOYLAT: {type: buoy_lateral, role: master, geometry: [point], scope: v1, system: true}
+BOYCAR: {type: buoy_cardinal, role: master, geometry: [point], scope: v1, system: true}
+BOYSAW: {type: buoy_safe_water, role: master, geometry: [point], scope: v1, system: true}
+BOYSPP: {type: buoy_special_purpose, role: master, geometry: [point], scope: v1, system: true}
+BOYISD: {type: buoy_isolated_danger, role: master, geometry: [point], scope: v1, system: true}
+BOYINB: {type: buoy_installation, role: master, geometry: [point], scope: v1, system: true}
+BCNLAT: {type: beacon_lateral, role: master, geometry: [point], scope: v1, system: true}
+BCNCAR: {type: beacon_cardinal, role: master, geometry: [point], scope: v1, system: true}
+BCNSAW: {type: beacon_safe_water, role: master, geometry: [point], scope: v1, system: true}
+BCNSPP: {type: beacon_special_purpose, role: master, geometry: [point], scope: v1, system: true}
+BCNISD: {type: beacon_isolated_danger, role: master, geometry: [point], scope: v1, system: true}
+LITFLT: {type: light_float, role: master, geometry: [point], scope: v1}
+LITVES: {type: light_vessel, role: master, geometry: [point], scope: v1}
+LNDMRK: {type: landmark, role: master, geometry: [point, area], scope: v1}
+PILPNT: {type: pile, role: master, geometry: [point], scope: v1}
+MORFAC: {type: mooring, role: master, geometry: [point, line, area], scope: v1}
+WRECKS: {type: wreck, role: master, geometry: [point, area], scope: v1}
+OBSTRN: {type: obstruction, role: master, geometry: [point, line, area], scope: v1}
+UWTROC: {type: rock, role: master, geometry: [point], scope: v1}
+
+LIGHTS: {role: slave, slave_key: light, standalone: light, geometry: [point], scope: v1}
+TOPMAR: {role: slave, slave_key: topmark, standalone: topmark, geometry: [point], scope: v1}
+DAYMAR: {role: slave, slave_key: daymark, standalone: daymark, geometry: [point], scope: v1}
+FOGSIG: {role: slave, slave_key: fog_signal, standalone: fog_signal, geometry: [point], scope: v1}
+RTPBCN: {role: slave, slave_key: radar_transponder, standalone: radar_transponder, geometry: [point], scope: v1}
+
+ACHARE: {type: anchorage, role: feature, geometry: [point, area], scope: v2}
+ACHBRT: {type: anchor_berth, role: feature, geometry: [point, area], scope: v2}
+RESARE: {type: restricted_area, role: feature, geometry: [area], scope: v2}
+CBLSUB: {type: cable_submarine, role: feature, geometry: [line], scope: v2}
+CBLARE: {type: cable_area, role: feature, geometry: [area], scope: v2}
+CBLOHD: {type: cable_overhead, role: feature, geometry: [line], scope: v2}
+PIPSOL: {type: pipeline_submarine, role: feature, geometry: [line], scope: v2}
+PIPARE: {type: pipeline_area, role: feature, geometry: [area], scope: v2}
+OFSPLF: {type: platform, role: master, geometry: [point, area], scope: v2}
+TSSLPT: {type: separation_lane, role: feature, geometry: [area], scope: v2}
+TSSBND: {type: separation_boundary, role: feature, geometry: [line], scope: v2}
+TSELNE: {type: separation_line, role: feature, geometry: [line], scope: v2}
+TSEZNE: {type: separation_zone, role: feature, geometry: [area], scope: v2}
+FAIRWY: {type: fairway, role: feature, geometry: [area], scope: v2}
+BRIDGE: {type: bridge, role: master, geometry: [point, line, area], scope: v2}
+# DWRTPT (deep water route part) has no seamark:type on the OSM wiki -> intentionally not mapped,
+# see docs/OPEN_QUESTIONS.md.

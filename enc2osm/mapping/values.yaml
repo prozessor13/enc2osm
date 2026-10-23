@@ -1,0 +1,420 @@
+# S-57 enumeration codes -> OSM values.
+# S-57 side: GDAL s57expectedinput.csv (GDAL 3.13.3). OSM side: OSM wiki Seamarks/* pages
+# (fetched 2026-10-23). Where the labels differ, the S-57 meaning is quoted in a comment.
+# Codes missing here are unmapped on purpose (counted, see docs/OPEN_QUESTIONS.md).
+
+BOYSHP:
+  1: conical        # conical (nun, ogival)
+  2: can            # can (cylindrical)
+  3: spherical
+  4: pillar
+  5: spar           # spar (spindle)
+  6: barrel         # barrel (tun)
+  7: super-buoy
+  8: ice_buoy
+
+BCNSHP:
+  1: stake          # stake, pole, perch, post (wiki: stake/pole/perch/post; style: stake)
+  2: withy          # GDAL spells it "whity"
+  3: tower          # beacon tower
+  4: lattice        # lattice beacon
+  5: pile           # pile beacon
+  6: cairn
+  7: buoyant        # buoyant beacon
+
+TOPSHP:
+  1: "cone, point up"
+  2: "cone, point down"
+  3: sphere
+  4: "2 spheres"
+  5: cylinder                  # cylinder (can)
+  6: board
+  7: x-shape                   # x-shape (St. Andrew's cross)
+  8: cross                     # upright cross (St. George cross)
+  9: "cube, point up"
+  10: "2 cones point together" # 2 cones, point to point
+  11: "2 cones base together"  # 2 cones, base to base
+  12: rhombus                  # rhombus (diamond)
+  13: "2 cones up"             # 2 cones (points upward)
+  14: "2 cones down"           # 2 cones (points downward)
+  15: "besom, point up"        # besom, point up (broom or perch)
+  16: "besom, point down"      # besom, point down (broom or perch)
+  17: flag
+  18: sphere over rhombus
+  19: square
+  20: "rectangle, horizontal"
+  21: "rectangle, vertical"
+  22: "trapezium, up"
+  23: "trapezium, down"
+  24: "triangle, point up"
+  25: "triangle, point down"
+  26: circle
+  27: 2 upright crosses        # two upright crosses (one over the other)
+  28: t-shape
+  29: "triangle, point up over circle"
+  30: upright cross over circle
+  31: rhombus over circle
+  32: "circle over triangle, point up"
+  33: other                    # other shape (see INFORM)
+
+COLOUR:
+  1: white
+  2: black
+  3: red
+  4: green
+  5: blue
+  6: yellow
+  7: grey
+  8: brown
+  9: amber
+  10: violet
+  11: orange
+  12: magenta
+  13: pink
+
+COLPAT:
+  1: horizontal     # horizontal stripes
+  2: vertical       # vertical stripes
+  3: diagonal       # diagonal stripes
+  4: squared
+  5: stripes        # stripes (direction unknown)
+  6: border         # border stripes
+
+CATLAM:
+  1: port                         # port-hand lateral mark
+  2: starboard                    # starboard-hand lateral mark
+  3: preferred_channel_starboard  # preferred channel to starboard lateral mark
+  4: preferred_channel_port       # preferred channel to port lateral mark
+
+CATCAM:
+  1: north
+  2: east
+  3: south
+  4: west
+
+CATSPM:
+  1: firing_danger_area
+  2: target
+  3: marker_ship
+  4: degaussing_range
+  5: barge
+  6: cable
+  7: spoil_ground
+  8: outfall
+  9: odas
+  10: recording
+  11: seaplane_anchorage
+  12: recreation_zone
+  13: private
+  14: mooring
+  15: lanby
+  16: leading
+  17: measured_distance
+  18: notice
+  19: tss
+  20: no_anchoring
+  21: no_berthing
+  22: no_overtaking
+  23: no_two-way_traffic
+  24: reduced_wake
+  25: speed_limit
+  26: stop
+  27: warning                     # general warning mark
+  28: sound_ship_siren
+  29: restricted_vertical_clearance
+  30: maximum_vessel_draught
+  31: restricted_horizontal_clearance
+  32: strong_current
+  33: berthing                    # berthing permitted mark
+  34: overhead_power_cable
+  35: channel_edge_gradient
+  36: telephone
+  37: ferry_crossing
+  39: pipeline
+  40: anchorage
+  41: clearing
+  42: control
+  43: diving
+  44: refuge_beacon
+  45: foul_ground
+  46: yachting
+  47: heliport
+  48: gps
+  49: seaplane_landing
+  50: no_entry
+  51: work_in_progress
+  52: unknown_purpose
+
+CATINB:
+  1: calm           # catenary anchor leg mooring (CALM)
+  2: sbm            # single buoy mooring (SBM or SPM)
+
+CATLIT:
+  1: directional    # directional function
+  4: leading
+  5: aero
+  6: air_obstruction
+  7: fog_detector
+  8: floodlight
+  9: strip_light
+  10: subsidiary
+  11: spotlight
+  12: front
+  13: rear
+  14: lower
+  15: upper
+  16: moire         # moiré effect
+  17: emergency
+  18: bearing
+  19: horizontal    # horizontally disposed
+  20: vertical      # vertically disposed
+
+LITCHR:
+  1: F              # fixed
+  2: Fl             # flashing
+  3: LFl            # long-flashing
+  4: Q              # quick-flashing
+  5: VQ             # very quick-flashing
+  6: UQ             # ultra quick-flashing
+  7: Iso            # isophased
+  8: Oc             # occulting
+  9: IQ             # interrupted quick-flashing
+  10: IVQ           # interrupted very quick-flashing
+  11: IUQ           # interrupted ultra quick-flashing
+  12: Mo            # morse
+  13: FFl           # fixed / flash
+  14: FlLFl         # flash / long-flash
+  15: OcFl          # occulting / flash
+  16: FLFl          # fixed / long-flash
+  17: Al.Oc         # occulting alternating
+  18: Al.LFl        # long-flash alternating
+  19: Al.Fl         # flash alternating
+  20: Al.Gr         # group alternating
+  25: Q+LFl         # quick-flash plus long-flash
+  26: VQ+LFl        # very quick-flash plus long-flash
+  27: UQ+LFl        # ultra quick-flash plus long-flash
+  28: Al            # alternating
+  29: Al.FFl        # fixed and alternating flashing
+
+LITVIS:
+  1: high           # high intensity
+  2: low            # low intensity
+  3: faint
+  4: intensified
+  5: unintensified
+  6: restricted     # visibility deliberately restricted
+  7: obscured
+  8: part_obscured  # partially obscured
+
+EXCLIT:
+  1: 24h            # light shown without change of character
+  2: day            # daytime light
+  3: fog            # fog light
+  4: night          # night light
+
+CATFOG:
+  1: explosive
+  2: diaphone
+  3: siren
+  4: nautophone
+  5: reed
+  6: tyfon
+  7: bell
+  8: whistle
+  9: gong
+  10: horn
+
+SIGGEN:
+  1: automatic      # automatically
+  2: wave           # by wave action
+  3: hand           # by hand
+  4: wind           # by wind
+
+CATRTB:
+  1: ramark         # ramark, radar beacon transmitting continuously
+  2: racon          # racon, radar transponder beacon
+  3: leading        # leading racon/radar transponder beacon
+
+CATLMK:
+  1: cairn
+  2: cemetery
+  3: chimney
+  4: dish_aerial
+  5: flagstaff      # flagstaff (flagpole)
+  6: flare_stack
+  7: mast
+  8: windsock
+  9: monument
+  10: column        # column (pillar)
+  11: memorial      # memorial plaque
+  12: obelisk
+  13: statue
+  14: cross
+  15: dome
+  16: radar_scanner
+  17: tower
+  18: windmill
+  19: windmotor
+  20: spire         # spire/minaret
+
+FUNCTN:
+  2: harbour_master # harbour-master's office
+  3: customs        # custom office
+  4: health         # health office
+  5: hospital
+  6: post_office
+  7: hotel
+  8: railway_station
+  9: police_station
+  10: water-police_station
+  11: pilot_office
+  12: pilot_lookout
+  13: bank          # bank office
+  14: district_control  # headquarters for district control
+  15: transit_shed  # transit shed/warehouse
+  16: factory
+  17: power_station
+  18: administrative
+  19: educational   # educational facility
+  20: church
+  21: chapel
+  22: temple
+  23: pagoda
+  24: shinto_shrine
+  25: buddhist_temple
+  26: mosque
+  27: marabout
+  28: lookout
+  29: communication
+  30: television
+  31: radio
+  32: radar
+  33: light_support
+  34: microwave
+  35: cooling
+  36: observation
+  37: time_ball
+  38: clock
+  39: control
+  40: airship_mooring
+  41: stadium
+  42: bus_station
+
+MARSYS:
+  1: iala-a         # IALA A
+  2: iala-b         # IALA B
+  9: none           # no system
+  10: other         # other system
+
+CONRAD:
+  1: conspicuous      # radar conspicuous
+  2: not_conspicuous  # not radar conspicuous
+  3: reflector        # radar conspicuous (has radar reflector)
+
+CONVIS:
+  1: conspicuous      # visual conspicuous
+  2: not_conspicuous  # not visual conspicuous
+
+NATCON:
+  1: masonry
+  2: concreted
+  3: loose_boulders
+  4: hard-surfaced
+  5: unsurfaced
+  6: wooden
+  7: metal
+  8: grp            # glass reinforced plastic (GRP)
+  9: painted
+
+CONDTN:
+  1: under_construction
+  2: ruined
+  3: under_reclamation
+  4: wingless
+  5: planned_construction
+
+STATUS:
+  1: permanent
+  2: occasional
+  3: recommended
+  4: not_in_use     # disused
+  5: intermittent   # periodically/intermittent
+  6: reserved
+  7: temporary
+  8: private
+  9: mandatory
+  11: extinguished
+  12: illuminated
+  13: historic
+  14: public
+  15: synchronised  # synchronized
+  16: watched
+  17: unwatched     # un-watched
+  18: existence_doubtful
+
+CATMOR:
+  1: dolphin
+  2: deviation_dolphin
+  3: bollard
+  4: wall           # tie-up wall
+  5: pile           # post or pile
+  6: chain          # chain/wire/cable
+  7: buoy           # mooring buoy
+
+CATPLE:
+  1: stake
+  3: post
+  4: tripodal
+
+CATWRK:
+  1: non-dangerous        # non-dangerous wreck
+  2: dangerous            # dangerous wreck
+  3: distributed_remains  # distributed remains of wreck
+  4: mast_showing         # wreck showing mast/masts
+  5: hull_showing         # wreck showing any portion of hull or superstructure
+
+CATOBS:
+  1: stump          # snag / stump
+  2: wellhead
+  3: diffuser
+  4: crib
+  5: fish_haven
+  6: foul_area
+  7: foul_ground
+  8: ice_boom
+  9: ground_tackle
+
+WATLEV:
+  1: part-submerged # partly submerged at high water
+  2: dry            # always dry
+  3: submerged      # always under water/submerged
+  4: covers         # covers and uncovers
+  5: awash
+  6: floods         # subject to inundation or flooding
+
+NATSUR:
+  1: mud
+  2: clay
+  3: silt
+  4: sand
+  5: stones         # stone
+  6: gravel
+  7: pebbles
+  8: cobbles
+  9: rocky          # rock
+  11: lava
+  14: coral
+  17: shells
+  18: boulders      # boulder
+
+NATQUA:
+  1: fine
+  2: medium
+  3: coarse
+  4: broken
+  5: sticky
+  6: soft
+  7: stiff
+  8: volcanic
+  9: calcareous
+  10: hard

@@ -1,0 +1,83 @@
+# S-57 attribute acronym -> OSM attribute key (suffix of seamark:<object>:<key>).
+#
+#   key:   OSM attribute key (OSM wiki Seamarks/Seamark_Attributes). `name` is emitted as
+#          seamark:name, all others as seamark:<type or slave key>:<key>.
+#   kind:  enum    single code, translated via values.yaml
+#          list    code list, each translated via values.yaml, joined with ';'
+#          text    verbatim text
+#          number  decimal, written without trailing '.0'
+#          int     integer
+#          depth   decimal in the cell's depth units (DSPM_DUNI) -> metres
+#          height  decimal in the cell's height units (DSPM_HUNI) -> metres
+#          siggrp  signal group '(3)' -> '3'; '()' -> omitted; anything else -> unmapped
+#          meta    provenance / meta information: consumed elsewhere or deliberately dropped,
+#                  never counted as unmapped
+#   values: (enum/list) name of the table in values.yaml; defaults to the acronym.
+#
+# Attributes not listed here are unmapped: dropped (or kept as enc:<ACRONYM> with --keep-raw)
+# and counted in the stats report.
+
+OBJNAM: {key: name, kind: text}
+
+BOYSHP: {key: shape, kind: enum}
+BCNSHP: {key: shape, kind: enum}
+TOPSHP: {key: shape, kind: enum}
+COLOUR: {key: colour, kind: list}
+COLPAT: {key: colour_pattern, kind: list}
+
+CATLAM: {key: category, kind: enum}
+CATCAM: {key: category, kind: enum}
+CATSPM: {key: category, kind: list}
+CATINB: {key: category, kind: enum}
+CATLIT: {key: category, kind: list}
+CATFOG: {key: category, kind: enum}
+CATRTB: {key: category, kind: enum}
+CATLMK: {key: category, kind: list}
+CATMOR: {key: category, kind: enum}
+CATPLE: {key: category, kind: enum}
+CATWRK: {key: category, kind: enum}
+CATOBS: {key: category, kind: enum}
+
+MARSYS: {key: system, kind: enum}
+CONRAD: {key: reflectivity, kind: enum}
+CONVIS: {key: conspicuity, kind: enum}
+NATCON: {key: construction, kind: list}
+CONDTN: {key: condition, kind: enum}
+STATUS: {key: status, kind: list}
+FUNCTN: {key: function, kind: list}
+WATLEV: {key: water_level, kind: enum}
+NATSUR: {key: surface, kind: list}
+NATQUA: {key: surface_qualification, kind: list}
+
+VALSOU: {key: depth, kind: depth}
+HEIGHT: {key: height, kind: height}
+ELEVAT: {key: elevation, kind: height}
+VERLEN: {key: vertical_length, kind: height}
+
+LITCHR: {key: character, kind: enum}
+SIGGRP: {key: group, kind: siggrp}
+SIGPER: {key: period, kind: number}
+SIGSEQ: {key: sequence, kind: text}
+VALNMR: {key: range, kind: number}
+VALMXR: {key: range, kind: number}
+SECTR1: {key: sector_start, kind: number}
+SECTR2: {key: sector_end, kind: number}
+LITVIS: {key: visibility, kind: list}
+EXCLIT: {key: exhibition, kind: enum}
+MLTYLT: {key: multiple, kind: int}
+ORIENT: {key: orientation, kind: number}
+SIGFRQ: {key: frequency, kind: int}
+SIGGEN: {key: generation, kind: enum}
+RADWAL: {key: wavelength, kind: text}
+
+INFORM: {key: information, kind: text}
+PERSTA: {key: period_start, kind: text}
+PEREND: {key: period_end, kind: text}
+
+# provenance: SCAMIN/SORDAT -> enc:scamin/enc:sordat (see build), the rest is dropped on purpose
+SCAMIN: {kind: meta}
+SCAMAX: {kind: meta}
+SORDAT: {kind: meta}
+SORIND: {kind: meta}
+RECDAT: {kind: meta}
+RECIND: {kind: meta}

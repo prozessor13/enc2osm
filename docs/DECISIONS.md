@@ -47,3 +47,20 @@ The loser is listed as skipped with reason "duplicate".
 - Sliver threshold default 10 m² per polygon part (area converted at the part's mid latitude).
   Rescheme cells share exact grid edges, so on the fixtures no slivers occur at all.
 - Mask grid 0.5°. Mask parts are the *full* coverages (not the effective areas), as specified.
+
+## D8 — Mapping tables without PyYAML (2026-10-23)
+Runtime deps are GDAL + pyosmium only, so `enc2osm/yamlmini.py` parses the YAML subset the tables
+use (block maps, flow lists/maps, comments, quoted scalars) and rejects everything else. A test
+cross-checks it against PyYAML (dev-only dependency in the image) on all three tables.
+
+## D9 — Units (2026-10-23)
+`DSPM_DUNI`: 1 = metres, 3 = feet (×0.3048), 4 = fathoms and fractions (×1.8288);
+2 = "fathoms and feet" is **not** converted (encoding of the value is unclear) — the attribute is
+dropped and counted (`unit_unknown`). `DSPM_HUNI`: 1 = metres, 2 = feet. Converted values are
+rounded to 0.01 m; metre values pass through unchanged. All fixture cells use metres.
+Kinds `depth`/`height` are declared per attribute in `attributes.yaml`.
+
+## D10 — MARSYS inheritance only for buoys and beacons (2026-10-23)
+`system: true` in `objects.yaml` (BOY*, BCN*), matching the wiki ("Buoys, Beacons & Notices").
+Inheritance from `M_NSYS` only for point objects without own `MARSYS`; if the point lies in
+several `M_NSYS` areas with different values, it stays unset (counted as `marsys_conflict`).
