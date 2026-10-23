@@ -14,7 +14,7 @@ from pathlib import Path
 
 from osgeo import gdal
 
-from enc2osm import coverage, dedup, inventory, mapping, rejoin, writer
+from enc2osm import coverage, dedup, inventory, mapping, rejoin, store, writer
 from enc2osm.coverage import m_to_deg
 from enc2osm.pass2 import CellResult, Options, PointObj, bbox_geom, process_cell
 
@@ -68,14 +68,15 @@ def _work(args) -> CellResult:
     return process_cell(cell, eff, mapping.load(), scope_opts)
 
 
-def run_pass2(cells, effs, opts: Options, workers: int) -> list[CellResult]:
+def run_pass2(cells, effs, opts: Options, workers: int):
+    """Yield CellResults as they finish (any order; consumers must not depend on it)."""
     jobs = [(c, effs[c.name], opts) for c in sorted(cells, key=lambda c: c.name)]
     if workers <= 1:
-        results = [_work(j) for j in jobs]
+        for j in jobs:
+            yield _work(j)
     else:
         with mp.get_context("spawn").Pool(workers) as pool:
-            results = list(pool.imap_unordered(_work, jobs, chunksize=1))
-    return sorted(results, key=lambda r: r.cell)  # independent of worker scheduling
+            yield from pool.imap_unordered(_work, jobs, chunksize=1)
 
 
 def peak_rss_mb() -> float:
@@ -97,21 +98,26 @@ def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 
         raise SystemExit("no usable cells")
     effs = coverage.resolve(cells, sliver_m2=opts.sliver_m2)
     t1 = time.time()
-    results = run_pass2(cells, effs, opts, workers)
+    st = store.TempStore(os.path.dirname(os.path.abspath(output)))
+    points, dropped, cell_stats = [], [], {}
+    for r in run_pass2(cells, effs, opts, workers):
+        points.extend(r.points)
+        dropped.extend(r.dropped)
+        st.add_shapes(r.shapes)  # spooled to disk, re-read in deterministic order
+        cell_stats[r.cell] = r.stats
     t2 = time.time()
-
-    points = [p for r in results for p in r.points]
-    dropped = [p for r in results for p in r.dropped]
-    shapes = [s for r in results for s in r.shapes]
     tol = opts.seam_tolerance
     kept, decisions = dedup.dedup(points, tol, DEDUP_MARGIN_FRACTION * tol,
                                   overlaps=CoverageOverlap(cells, opts.sliver_m2))
     missing = dedup.audit(dropped, kept, tol)
     max_lat = max(max(abs(c.bbox[1]), abs(c.bbox[3])) for c in cells)
-    merged, rejoin_stats = rejoin.rejoin(shapes, m_to_deg(tol, max_lat))
+    n_shapes = st.count_shapes()
+    rejoin_stats = rejoin.rejoin_store(st, m_to_deg(tol, max_lat))
+    n_merged = st.count_merged()
     kept.sort(key=lambda p: (p.cell, p.cls, p.lnam, p.x, p.y))
-    wstats = writer.write(output, kept, merged, attribution(cells), opts.bbox,
-                          negative_ids=negative_ids)
+    wstats = writer.write(output, kept, st.merged(), attribution(cells), opts.bbox,
+                          negative_ids=negative_ids, store=st)
+    st.close()
     t3 = time.time()
 
     seam = sum(p.seam for p in points)
@@ -123,7 +129,7 @@ def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 
         "seam_merges": sum(d.action == "merged" for d in decisions),
         "ambiguous": amb, "ambiguous_share": round(amb / seam, 4) if seam else 0.0,
         "dropped_by_clipping": len(dropped), "dropped_without_counterpart": len(missing),
-        "shapes_before_rejoin": len(shapes), "shapes_written": len(merged), **rejoin_stats,
+        "shapes_before_rejoin": n_shapes, "shapes_written": n_merged, **rejoin_stats,
         **wstats,
         "time_s": {"pass1": round(t1 - t0, 2), "pass2": round(t2 - t1, 2),
                    "finalize": round(t3 - t2, 2), "total": round(t3 - t0, 2)},
@@ -132,11 +138,11 @@ def build(inputs, output, opts: Options, report_dir: str | None, workers: int = 
                     "bbox": opts.bbox},
     }
     if report_dir:
-        write_reports(Path(report_dir), results, decisions, missing, effs, cells, summary)
+        write_reports(Path(report_dir), cell_stats, decisions, missing, effs, cells, summary)
     return summary
 
 
-def write_reports(d: Path, results, decisions, missing, effs, cells, summary) -> None:
+def write_reports(d: Path, cell_stats, decisions, missing, effs, cells, summary) -> None:
     d.mkdir(parents=True, exist_ok=True)
     dedup.write_decisions(d / "dedup.csv", decisions)
     by_name = {c.name: c for c in cells}
@@ -153,9 +159,9 @@ def write_reports(d: Path, results, decisions, missing, effs, cells, summary) ->
                         cov.band if cov else "", cov.issue_date if cov else ""])
     total = Counter()
     per_cell = {}
-    for r in results:
-        total.update(r.stats)
-        per_cell[r.cell] = dict(sorted(r.stats.items()))
+    for name in sorted(cell_stats):
+        total.update(cell_stats[name])
+        per_cell[name] = dict(sorted(cell_stats[name].items()))
     summary_out = dict(summary)
     summary_out["global_stats"] = dict(sorted(total.items()))
     (d / "stats.json").write_text(json.dumps(summary_out, indent=1, sort_keys=True) + "\n")

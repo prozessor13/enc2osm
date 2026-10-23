@@ -51,21 +51,24 @@ def _chunks(ids: list[int]) -> list[list[int]]:
 
 
 class Plan:
-    def __init__(self, points: list[PointObj], shapes: list[Merged]):
-        self.points = points
-        self.vs = VertexStore(len(points) + 1)
-        self.ways: list[tuple[list[int], dict]] = []
-        self.rels: list[tuple[list[tuple[str, int, str]], dict]] = []
-        for s in shapes:
-            g = ogr.CreateGeometryFromWkb(s.wkb)
-            if s.kind == "line":
-                self._line(g, s.tags)
+    """First pass over lines/areas: assign vertex ids, spool ways/relations into the store."""
+
+    def __init__(self, n_points: int, shapes, store):
+        self.vs = VertexStore(n_points + 1)
+        self.store = store
+        self.n_ways = 0
+        self.n_rels = 0
+        for kind, _cls, wkb, tags in shapes:
+            g = ogr.CreateGeometryFromWkb(wkb)
+            if kind == "line":
+                self._line(g, tags)
             else:
-                self._area(g, s.tags)
+                self._area(g, tags)
 
     def _way(self, ids, tags) -> int:
-        self.ways.append((ids, tags))
-        return len(self.ways)
+        self.n_ways += 1
+        self.store.add_way(self.n_ways, ids, tags)
+        return self.n_ways
 
     def _line(self, g: ogr.Geometry, tags: dict) -> None:
         for i in range(g.GetGeometryCount()):
@@ -97,15 +100,25 @@ class Plan:
                     members.append(("w", self._way(part, {}), role))
         t = dict(tags)
         t["type"] = "multipolygon"
-        self.rels.append((members, t))
+        self.n_rels += 1
+        self.store.add_rel(self.n_rels, members, t)
 
 
-def write(path: str, points: list[PointObj], shapes: list[Merged], attribution: str,
-          bbox: tuple[float, float, float, float] | None, negative_ids: bool = False) -> dict:
-    """IDs are 1, 2, 3, ... per object type (Planetiler requires ascending, non-negative node
+def write(path: str, points: list[PointObj], shapes, attribution: str,
+          bbox: tuple[float, float, float, float] | None, negative_ids: bool = False,
+          store=None) -> dict:
+    """Write seamark nodes, then way vertices, ways and relations.
+
+    `shapes`: iterable of (kind, cls, wkb, tags) in output order, or a list of Merged.
+    IDs are 1, 2, 3, ... per object type (Planetiler requires ascending, non-negative node
     IDs); with negative_ids they are -1, -2, -3, ... (see docs/DECISIONS.md D16)."""
+    from enc2osm.store import TempStore
+
+    own = store is None
+    store = store or TempStore()
     sign = -1 if negative_ids else 1
-    plan = Plan(points, shapes)
+    shapes = ((m.kind, m.cls, m.wkb, m.tags) if isinstance(m, Merged) else m for m in shapes)
+    plan = Plan(len(points), shapes, store)
     if os.path.exists(path):
         os.remove(path)
     hdr = osmium.io.Header()
@@ -120,12 +133,14 @@ def write(path: str, points: list[PointObj], shapes: list[Merged], attribution: 
             w.add_node(mutable.Node(id=sign * i, location=(p.x, p.y), tags=p.tags))
         for nid, (qx, qy) in plan.vs.order:
             w.add_node(mutable.Node(id=sign * nid, location=(qx / QUANT, qy / QUANT), tags={}))
-        for i, (ids, tags) in enumerate(plan.ways, 1):
-            w.add_way(mutable.Way(id=sign * i, nodes=[sign * n for n in ids], tags=tags))
-        for i, (members, tags) in enumerate(plan.rels, 1):
+        for wid, ids, tags in store.ways():
+            w.add_way(mutable.Way(id=sign * wid, nodes=[sign * n for n in ids], tags=tags))
+        for rid, members, tags in store.rels():
             w.add_relation(mutable.Relation(
-                id=sign * i, members=[(t, sign * r, role) for t, r, role in members], tags=tags))
+                id=sign * rid, members=[(t, sign * r, role) for t, r, role in members], tags=tags))
     finally:
         w.close()
+        if own:
+            store.close()
     return {"seamark_nodes": len(points), "vertex_nodes": len(plan.vs.order),
-            "ways": len(plan.ways), "relations": len(plan.rels)}
+            "ways": plan.n_ways, "relations": plan.n_rels}
