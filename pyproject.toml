@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enc2osm"
+version = "0.1.0"
+description = "Merge IHO S-57 ENC cells into one deduplicated OSM file with OpenSeaMap seamark tagging"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+# GDAL Python bindings must match the system libgdal; install them via your
+# platform (Docker image, conda-forge, Homebrew) rather than pip.
+dependencies = ["osmium>=3.6"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+enc2osm = "enc2osm.cli:main"
+
+[tool.setuptools]
+packages = ["enc2osm"]
+
+[tool.setuptools.package-data]
+enc2osm = ["mapping/*.yaml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
