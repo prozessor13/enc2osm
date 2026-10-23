@@ -2,13 +2,16 @@
 
 | Phase | Status | Verified |
 |---|---|---|
-| 0 Scaffold + LNAM experiment | done | image builds (arm64), fixtures fetched (small 14 cells, medium 90 cells), `lnam-check` runs, tests green |
-| 1 Inventory | done | `inventory` on small (14 cells, bands 1–5) + medium (90 cells); tests: CATCOV union/hole, missing M_COVR, duplicate name, broken file |
-| 2 Coverage resolver | done | synthetic: nested, partial, same-band (scale, date, name), shadowed, sliver; small+medium: union(eff)=union(cov), no overlap |
-| 3 Feature extraction | done | units (m/ft/fathoms, unknown → dropped+counted), M_NSYS inheritance (own wins, conflict → unset), small cell read; YAML loader = PyYAML on all tables |
-| 4 Master/slave aggregation | done | synthetic: LNAM refs both directions, unique position fallback, ambiguous position, area master, standalone grouping, light order; fixtures: 3057 attached by LNAM, 10 by position, 41 standalone groups |
-| 5 Tag mapping | done (v1) | 34 golden cases (hand-derived, cite raw values) green: lateral/cardinal/isolated/safe-water/special buoys, beacons, daymarks, topmarks, racon, fog signals, sector + multi-light structures, lighthouses, standalone major/minor lights, wrecks, rocks, obstructions, mooring, pile |
-| 6 Clipping, seam dedup, re-join | done | seam scenarios (offset 20 m both directions, 2 unnamed buoys 30 m, ambiguous, touching cells, area+line re-join) green; small: 8 merges (all 0.0 m), 0 ambiguous |
-| 7 OSM writer | done | own node per seamark, vertex dedup 1e-7, way split 2000, multipolygon relations, area=no; small: osmium check-refs clean, byte-identical reruns |
-| 5b Tag mapping v2 | done | 17 v2 golden cases; medium v2: criteria 3/4/5/9 PASS, 325 area pieces → 92, 169 line pieces → 53 re-joined |
-| 8 CLI, stats, packaging | done | build/inventory/lnam-check, --bbox/--keep-raw/.osm XML e2e tests, wheel contains mapping package (bug found+fixed), Docker entrypoint build works, preview.sh |
+| 0 Scaffold + LNAM experiment | done | image builds (arm64), fixtures fetched (small 14 cells, medium 90 cells), `lnam-check` runs |
+| 1 Inventory | done | small (14 cells, bands 1–5) + medium (90); tests: CATCOV union/hole, missing M_COVR, duplicate name, broken file |
+| 2 Coverage resolver | done | synthetic: nested, partial, same-band (scale, date, name), shadowed, sliver; fixtures: union(eff)=union(cov), no overlap; full NOAA catalog (7114 cells) in 0.7 s |
+| 3 Feature extraction | done | units (m/ft/fathoms, unknown → dropped+counted), M_NSYS inheritance; YAML loader = PyYAML on all tables |
+| 4 Master/slave aggregation | done | LNAM refs both directions, unique position fallback, standalone grouping, light order |
+| 5 Tag mapping (v1) | done | 34 hand-derived golden cases |
+| 5b Tag mapping (v2) | done | 17 hand-derived golden cases |
+| 6 Clipping, seam dedup, re-join | done | 10 seam scenarios; medium: 15 merges, 0 ambiguous |
+| 7 OSM writer | done | own node per seamark, vertex dedup (sqlite spill), way split 2000, multipolygons, `area=no`; positive IDs (D16) |
+| 8 CLI, stats, packaging | done | e2e CLI tests, wheel/Docker entry point verified, README, preview.sh |
+| Acceptance | done | criteria 1–10, see REPORT.md (medium v1 + v2, small v2) |
+
+Final state: 102 tests green in the image; tag `v0.1.0` on `dev`. Nothing pushed.
