@@ -18,6 +18,7 @@ class Mapping:
     objects: dict
     attributes: dict
     values: dict
+    rules: dict
 
     def classes(self, scope: str) -> list[str]:
         allowed = SCOPES[scope]
@@ -37,7 +38,7 @@ class Mapping:
         out = {o["type"] for o in self.objects.values() if o.get("type")}
         out |= {o["standalone"] for o in self.objects.values() if o.get("standalone")}
         out.discard("light")
-        return out | {"light_major", "light_minor"}
+        return out | {self.rules["light"]["major"], self.rules["light"]["minor"]}
 
 
 def validate(m: Mapping) -> None:
@@ -59,6 +60,10 @@ def validate(m: Mapping) -> None:
             raise ValueError(f"attributes.yaml {acr}: missing key")
         if a["kind"] in ("enum", "list") and a.get("values", acr) not in m.values:
             raise ValueError(f"attributes.yaml {acr}: no table in values.yaml")
+    lr = m.rules.get("light") or {}
+    if not isinstance(lr.get("major_min_range"), (int, float)) or not lr.get("major") \
+            or not lr.get("minor"):
+        raise ValueError("rules.yaml: light rule incomplete")
     for table, codes in m.values.items():
         for code, val in codes.items():
             if not isinstance(code, int) or not isinstance(val, str) or not val:
@@ -69,6 +74,6 @@ def validate(m: Mapping) -> None:
 def load(directory: str | None = None) -> Mapping:
     d = Path(directory) if directory else HERE
     m = Mapping(yamlmini.load(d / "objects.yaml"), yamlmini.load(d / "attributes.yaml"),
-                yamlmini.load(d / "values.yaml"))
+                yamlmini.load(d / "values.yaml"), yamlmini.load(d / "rules.yaml"))
     validate(m)
     return m

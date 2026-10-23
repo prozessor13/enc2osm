@@ -35,7 +35,7 @@ def test_rejects_outside_subset(bad):
         yamlmini.loads(bad)
 
 
-@pytest.mark.parametrize("name", ["objects.yaml", "attributes.yaml", "values.yaml"])
+@pytest.mark.parametrize("name", ["objects.yaml", "attributes.yaml", "values.yaml", "rules.yaml"])
 def test_matches_pyyaml(name):
     yaml = pytest.importorskip("yaml")
     text = Path(HERE / name).read_text()

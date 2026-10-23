@@ -1,0 +1,7 @@
+# Rules that are data, not code.
+
+# seamark:type of a standalone light (LIGHTS without a structure), see objects.yaml.
+light:
+  major_min_range: 10   # nautical miles, VALNMR; S-52 LIGHTS06 major-light threshold
+  major: light_major
+  minor: light_minor

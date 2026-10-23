@@ -7,3 +7,4 @@
 | 2 Coverage resolver | done | synthetic: nested, partial, same-band (scale, date, name), shadowed, sliver; small+medium: union(eff)=union(cov), no overlap |
 | 3 Feature extraction | done | units (m/ft/fathoms, unknown → dropped+counted), M_NSYS inheritance (own wins, conflict → unset), small cell read; YAML loader = PyYAML on all tables |
 | 4 Master/slave aggregation | done | synthetic: LNAM refs both directions, unique position fallback, ambiguous position, area master, standalone grouping, light order; fixtures: 3057 attached by LNAM, 10 by position, 41 standalone groups |
+| 5 Tag mapping | done (v1) | 34 golden cases (hand-derived, cite raw values) green: lateral/cardinal/isolated/safe-water/special buoys, beacons, daymarks, topmarks, racon, fog signals, sector + multi-light structures, lighthouses, standalone major/minor lights, wrecks, rocks, obstructions, mooring, pile |

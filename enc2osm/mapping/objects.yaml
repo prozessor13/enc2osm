@@ -9,7 +9,11 @@
 #   scope:     v1 (points: seamarks + hazards) or v2 (areas + lines).
 #   system:    true -> emit seamark:<type>:system from MARSYS (own or inherited from M_NSYS).
 #   standalone (slaves only): seamark:type for a slave without any structure.
-#              `light` is a rule, see `light_rule` below.
+#              `light` means: apply rules.yaml `light` — light_major if the largest nominal range
+#              (VALNMR) of the lights in the group is >= major_min_range nautical miles, else
+#              light_minor (also when no range is given). Source: OSM wiki (major = seen at
+#              extended distances, minor = short range) with the S-52 LIGHTS06 10 M threshold
+#              the reference style also uses.
 
 BOYLAT: {type: buoy_lateral, role: master, geometry: [point], scope: v1, system: true}
 BOYCAR: {type: buoy_cardinal, role: master, geometry: [point], scope: v1, system: true}

@@ -78,3 +78,30 @@ several `M_NSYS` areas with different values, it stays unset (counted as `marsys
   Its type comes from the first class in LIGHTS > FOGSIG > RTPBCN > DAYMAR > TOPMAR.
 - Light order on a structure: unsectored lights first, then SECTR1 ascending, then colour codes,
   then LNAM (determinism). Numbering itself happens in the tag mapping.
+
+## D12 — Tag mapping rules (2026-10-23)
+- **Lighthouses (known trap 1):** the master keeps its own type (`LNDMRK` → `landmark`,
+  `BCN*` → `beacon_*`), the light goes on top as `seamark:light:*`. The reference pipeline handles
+  exactly this: `Seamark.java` builds the light label for any type carrying light tags,
+  `SeamarkZoomRules` promotes "a lit landmark … is an aid in its own right", and `labels.ts`
+  stacks name + characteristic for lit landmarks. Major vs. minor rendering comes from
+  `light_range` (≥ 10 M), not from the type. Retyping a landmark to `light_major` would lose the
+  structure (tower/category/function) and is not what S-57 encodes.
+- **Standalone lights:** `light_major` if max VALNMR ≥ 10 M, else `light_minor` (rules.yaml).
+- **Light character (known trap 3):** `LITCHR` → `seamark:light:character` (wiki abbreviations
+  F, Fl, LFl, Q, VQ, UQ, Iso, Oc, IQ, IVQ, IUQ, Mo, FFl, FlLFl, OcFl, FLFl, Al.Oc, Al.LFl, Al.Fl,
+  Al.Gr, Q+LFl, VQ+LFl, UQ+LFl, Al, Al.FFl); `SIGGRP` "(3)" → `group=3`, "(2+1)" → `2+1`,
+  "(A)" → `A` (Morse), "()" → no group, multi-group values like "(6)(1)" → unmapped (counted).
+  `SIGPER` → `period`, `HEIGHT` → `height` (m), `VALNMR` → `range` (M). The reference style
+  composes `Fl(3)W.30s47m19M` from exactly these keys (`Seamark.lightAbbr`).
+- `seamark:light:N:*` numbering when there is more than one light **or** any light has sector
+  limits (the style draws sector arcs only from numbered keys). One unsectored light → unnumbered.
+- Other slave classes: several identical copies (e.g. one daymark per face) → emitted once;
+  differing copies → numbered `seamark:daymark:N:*`.
+- Name: master `OBJNAM`, else the first slave's (`seamark:name`); other slave names are dropped
+  (counted `slave_name_dropped`).
+- Enumerations: a list with **any** unknown code is dropped entirely (never a partial list).
+- A key set twice with different values on one object (e.g. VALNMR and VALMXR both → range) is
+  dropped and counted (`conflict:*`).
+- `MARSYS` is emitted as `seamark:<type>:system` only for BOY*/BCN*; elsewhere ignored.
+- Provenance tags: `enc:cell`, `enc:band`, `enc:lnam` (master's), `enc:scamin`, `enc:sordat`.
