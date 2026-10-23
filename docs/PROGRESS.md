@@ -10,3 +10,4 @@
 | 5 Tag mapping | done (v1) | 34 golden cases (hand-derived, cite raw values) green: lateral/cardinal/isolated/safe-water/special buoys, beacons, daymarks, topmarks, racon, fog signals, sector + multi-light structures, lighthouses, standalone major/minor lights, wrecks, rocks, obstructions, mooring, pile |
 | 6 Clipping, seam dedup, re-join | done | seam scenarios (offset 20 m both directions, 2 unnamed buoys 30 m, ambiguous, touching cells, area+line re-join) green; small: 8 merges (all 0.0 m), 0 ambiguous |
 | 7 OSM writer | done | own node per seamark, vertex dedup 1e-7, way split 2000, multipolygon relations, area=no; small: osmium check-refs clean, byte-identical reruns |
+| 5b Tag mapping v2 | done | 17 v2 golden cases; medium v2: criteria 3/4/5/9 PASS, 325 area pieces → 92, 169 line pieces → 53 re-joined |

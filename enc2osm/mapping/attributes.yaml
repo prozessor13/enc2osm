@@ -70,6 +70,26 @@ SIGFRQ: {key: frequency, kind: int}
 SIGGEN: {key: generation, kind: enum}
 RADWAL: {key: wavelength, kind: text}
 
+# v2 (areas and lines)
+CATACH: {key: category, kind: list}
+RESTRN: {key: restriction, kind: list}
+CATREA: {key: category, kind: list}
+CATCBL: {key: category, kind: enum}
+CATPIP: {key: category, kind: list}
+PRODCT: {key: product, kind: list}
+CATOFP: {key: category, kind: list}
+CATBRG: {key: category, kind: list}
+CATTSS: {key: category, kind: enum}
+TRAFIC: {key: traffic_flow, kind: enum}
+VERCLR: {key: clearance_height, kind: height}
+VERCCL: {key: clearance_height_closed, kind: height}
+VERCOP: {key: clearance_height_open, kind: height}
+VERCSA: {key: clearance_height_safe, kind: height}
+DRVAL1: {key: minimum_depth, kind: depth}
+DRVAL2: {key: maximum_depth, kind: depth}
+# HORCLR (clearance_width), RADIUS, BURDEP: unit source unclear (HUNI vs. metres vs. PUNI) ->
+# intentionally unmapped, see docs/OPEN_QUESTIONS.md.
+
 INFORM: {key: information, kind: text}
 PERSTA: {key: period_start, kind: text}
 PEREND: {key: period_end, kind: text}

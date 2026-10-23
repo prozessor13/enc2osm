@@ -418,3 +418,126 @@ NATQUA:
   8: volcanic
   9: calcareous
   10: hard
+
+# ---- v2 ----------------------------------------------------------------------------------
+
+CATACH:
+  1: unrestricted
+  2: deep_water
+  3: tanker
+  4: explosives
+  5: quarantine
+  6: seaplane       # sea-plane anchorage
+  7: small_craft
+  8: small_craft_mooring
+  9: 24_hour        # anchorage for periods up to 24 hours
+
+RESTRN:             # 16-27 occur in NOAA data but are not in GDAL's table -> unmapped (OPEN_QUESTIONS)
+  1: no_anchoring
+  2: restricted_anchoring
+  3: no_fishing
+  4: restricted_fishing
+  5: no_trawling
+  6: restricted_trawling
+  7: no_entry
+  8: restricted_entry
+  9: no_dredging
+  10: restricted_dredging
+  11: no_diving
+  12: restricted_diving
+  13: no_wake
+  14: to_be_avoided # area to be avoided
+  15: no_construction
+
+CATREA:
+  1: safety         # offshore safety zone
+  4: nature_reserve
+  5: bird_sanctuary
+  6: game_reserve   # game preserve
+  7: seal_sanctuary
+  8: degaussing_range
+  9: military       # military area
+  10: historic_wreck  # historic wreck area
+  12: navigational_aid_safety  # navigational aid safety zone
+  14: minefield
+  18: swimming      # swimming area
+  19: waiting       # waiting area
+  20: research      # research area
+  21: dredging      # dredging area
+  22: fish_sanctuary
+  23: ecological_reserve
+  24: no_wake       # no wake area
+  25: swinging      # swinging area
+
+CATCBL:
+  1: power          # power line
+  3: transmission   # transmission line
+  4: telephone
+  5: telegraph
+  6: mooring        # mooring cable/chain
+
+CATPIP:
+  2: outfall        # outfall pipe
+  3: intake         # intake pipe
+  4: sewer
+  5: bubbler        # bubbler system
+  6: supply         # supply pipe
+
+PRODCT:
+  1: oil
+  2: gas
+  3: water
+  4: stone
+  5: coal
+  6: ore
+  7: chemicals
+  8: drinking_water
+  9: milk
+  10: bauxite
+  11: coke
+  12: iron_ingots
+  13: salt
+  14: sand
+  15: timber
+  16: sawdust       # sawdust / wood chips
+  17: scrap         # scrap metal
+  18: lng           # liquified natural gas (LNG)
+  19: lpg           # liquified petroleum gas (LPG)
+  20: wine
+  21: cement
+  22: grain
+
+CATOFP:
+  1: oil            # oil derrick / rig
+  2: production     # production platform
+  3: observation    # observation / research platform
+  4: alp            # articulated loading platform (ALP)
+  5: salm           # single anchor leg mooring (SALM)
+  6: mooring        # mooring tower
+  7: artificial_island
+  8: fpso           # floating production, storage and off-loading vessel (FPSO)
+  9: accommodation  # accomodation platform
+  10: nccb          # navigation, communication and control buoy (NCCB)
+
+CATBRG:             # 8 transporter bridge: the wiki gives no value -> unmapped
+  1: fixed          # fixed bridge
+  2: opening        # opening bridge
+  3: swing          # swing bridge
+  4: lifting        # lifting bridge
+  5: bascule        # bascule bridge
+  6: pontoon        # pontoon bridge
+  7: drawbridge     # draw bridge
+  9: footbridge
+  10: viaduct
+  11: aqueduct
+  12: suspension    # suspension bridge
+
+CATTSS:
+  1: imo_adopted    # IMO - adopted
+  2: not_imo_adopted  # not IMO - adopted
+
+TRAFIC:
+  1: inbound
+  2: outbound
+  3: one-way
+  4: two-way

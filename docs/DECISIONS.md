@@ -159,3 +159,12 @@ in US5SEAIL, two "Bangor South Floating Security Barrier Light" 86 m apart in US
 not seam duplicates and removing one would lose a mark. The check now evaluates pairs from
 different cells (what seam dedup is responsible for) and lists same-cell pairs separately in
 `acceptance.json` / REPORT.md.
+
+## D18 — v2 classes (2026-10-23)
+Mapped: ACHARE, ACHBRT, RESARE, CBLSUB, CBLARE, CBLOHD, PIPSOL, PIPARE, OFSPLF, TSSLPT, TSSBND,
+TSELNE, TSEZNE, FAIRWY, BRIDGE with CATACH, RESTRN, CATREA, CATCBL, CATPIP, PRODCT, CATOFP, CATBRG,
+CATTSS, TRAFIC, VERCLR/VERCCL/VERCOP/VERCSA (height units), DRVAL1/DRVAL2 (depth units).
+OFSPLF and BRIDGE are masters (lights/daymarks on platforms and bridges attach to them when they are
+points). Not mapped: DWRTPT (no wiki type), HORCLR/RADIUS/BURDEP (unit unclear), supplement codes
+(OPEN_QUESTIONS Q1). Areas are written as closed ways or multipolygon relations, lines as ways
+(`area=no` when closed). 17 hand-derived v2 golden cases.
